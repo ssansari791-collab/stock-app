@@ -4,7 +4,7 @@ import pandas as pd
 import urllib.request
 import json
 
-st.set_page_config(page_title="Indian Stock Analysis & Pivot Points", layout="wide")
+st.set_page_config(page_title="TickStox", layout="wide")
 
 st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>📈 भारतीय स्टॉक एनालिसिस, स्कोरकार्ड और पिवट पॉइंट्स</h1>", unsafe_allow_html=True)
 st.write("---")
