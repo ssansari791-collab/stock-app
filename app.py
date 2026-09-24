@@ -6,7 +6,7 @@ import json
 
 st.set_page_config(page_title="TickStox", layout="wide")
 
-st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>📈 भारतीय स्टॉक एनालिसिस, स्कोरकार्ड और पिवट पॉइंट्स</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>📈TickStox</h1>", unsafe_allow_html=True)
 st.write("---")
 
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
