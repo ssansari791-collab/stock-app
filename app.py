@@ -3,12 +3,9 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
+st.set_page_config(page_title="TickStox", layout="wide")
 
-st.set_page_config <meta name="google-site-verification" content="1dTgqLUYMFbbmFPX2C6Us4vTdQFZ7uW4mZrRuA-xhT4" />
-(page_title="TickStox", layout="wide")
 
-st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>📈TickStox</h1>", unsafe_allow_html=True)
-st.write("---")
 
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
 def fetch_stock_suggestions(query):
