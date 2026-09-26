@@ -1,7 +1,6 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
 
 # Page Config
 st.set_page_config(page_title="TickStock - प्रो स्टॉक स्कैनर", layout="wide")
@@ -23,41 +22,29 @@ menu = st.sidebar.radio("मेनु चुनें (Navigation)",
                          "💡 फंडामेंटल हेल्थ (Fundamental Health)", 
                          "🔍 स्मार्ट स्कैनर (Smart Scanners)"])
 
-# Common Popular Stocks for quick search fallback
-popular_stocks = {
-    "Reliance": "RELIANCE.NS",
-    "TCS": "TCS.NS",
-    "HDFC Bank": "HDFCBANK.NS",
-    "Infosys": "INFY.NS",
-    "Tata Power": "TATAPOWER.NS",
-    "HFCL": "HFCL.NS",
-    "Zomato": "ZOMATO.NS",
-    "Himadri": "HSCL.NS"
-}
-
 if menu == "📊 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)":
     st.subheader("🔍 शेयर सर्च करें")
-    user_input = st.text_input("शेयर का नाम या टिकर लिखें (उदाम. Reliance, TCS, Zomato, HFCL):", "RELIANCE.NS")
+    user_input = st.text_input("शेयर का नाम या टिकर लिखें (उदा. Reliance, TCS, Zomato, HFCL, Jupitor):", "RELIANCE")
     
-    # Handle search flexibly
-    ticker_symbol = user_input.strip()
-    if not ticker_symbol.endswith(".NS") and not ticker_symbol.endswith(".BO"):
-        # Check if matches popular names loosely
-        matched = False
-        for name, sym in popular_stocks.items():
-            if ticker_symbol.lower() in name.lower() or ticker_symbol.lower() in sym.lower():
-                ticker_symbol = sym
-                matched = True
-                break
-        if not matched:
-            ticker_symbol = ticker_symbol.upper() + ".NS"
+    # Clean and format search input for Yahoo Finance
+    query = user_input.strip().upper()
+    if not query.endswith(".NS") and not query.endswith(".BO"):
+        ticker_symbol = query + ".NS"
+    else:
+        ticker_symbol = query
 
     try:
         stock = yf.Ticker(ticker_symbol)
         df = stock.history(period="5d")
         
+        # Fallback to .BO if .NS fails
+        if df.empty and not query.endswith(".BO") and not query.endswith(".NS"):
+            ticker_symbol = query + ".BO"
+            stock = yf.Ticker(ticker_symbol)
+            df = stock.history(period="5d")
+
         if df.empty:
-            st.error("स्टॉक डेटा नहीं मिला। कृपया सही नाम या टिकर दर्ज करें।")
+            st.error(f"स्टॉक डेटा नहीं मिला: '{user_input}'। कृपया सही नाम या टिकर दर्ज करें।")
         else:
             latest = df.iloc[-1]
             prev_close = df.iloc[-2]['Close'] if len(df) > 1 else latest['Open']
@@ -100,13 +87,14 @@ if menu == "📊 लाइव चार्ट और टेक्निकल (L
             if close > pivot:
                 st.success("🟢 **संकेत:** स्टॉक पिवट पॉइंट से ऊपर ट्रेड कर रहा है। ऊपर जाने की संभावना (Bullish) मजबूत है।")
             else:
-                st.error("🔴 **संकेत:** स्टॉक पिवट पॉइंट से नीचे है। सतर्क रहें,िि नीचे जाने का दबाव हो सकता है (Bearish)।")
+                st.error("🔴 **संकेत:** स्टॉक पिवट पॉइंट से नीचे है। सतर्क रहें, नीचे जाने का दबाव हो सकता है (Bearish)।")
 
             st.markdown("---")
             st.subheader("📉 ट्रेडिंगव्यू लाइव चार्ट (TradingView Chart)")
             
-            # TradingView Widget Embed via HTML
-            tv_symbol = ticker_symbol.replace(".NS", "")
+            # Fixed TradingView Symbol formatting
+            tv_symbol = ticker_symbol.replace(".NS", "").replace(".BO", "")
+            
             chart_html = f"""
             <div class="tradingview-widget-container" style="height:500px;width:100%">
               <div id="tradingview_chart" style="height:100%;width:100%"></div>
@@ -137,19 +125,25 @@ if menu == "📊 लाइव चार्ट और टेक्निकल (L
 
 elif menu == "💡 फंडामेंटल हेल्थ (Fundamental Health)":
     st.subheader("🏢 फंडामेंटल हेल्थ और वित्तीय जानकारी")
-    f_input = st.text_input("कंपनी का टिकर दर्ज करें (उदा. RELIAS, TCS):", "RELIANCE.NS")
+    f_input = st.text_input("कंपनी का टिकर दर्ज करें (उदा. RELIANCE, TCS):", "RELIANCE")
     try:
-        comp = yf.Ticker(f_input.upper() if ".NS" in f_input else f_input.upper() + ".NS")
+        f_symbol = f_input.strip().upper()
+        if not f_symbol.endswith(".NS"):
+            f_symbol += ".NS"
+            
+        comp = yf.Ticker(f_symbol)
         info = comp.info
         
         col1, col2 = st.columns(2)
         with col1:
             st.write(f"**कंपनी का नाम:** {info.get('longName', 'N/A')}")
-            frames = info.get('marketCap', 'N/A')
-            st.write(f"**मार्केट कैप (Market Cap):** {frames:,}" if isinstance(frames, int) else f"**मार्केट कैप:** {frames}")
+            m_cap = info.get('marketCap', 'N/A')
+            st.write(f"**मार्केट कैप (Market Cap):** {m_cap:,}" if isinstance(m_cap, int) else f"**मार्केट कैप:** {m_cap}")
             st.write(f"**पी/ई रेश्यो (P/E Ratio):** {info.get('trailingPE', 'N/A')}")
         with col2:
-            st.write(f"**डिविडेंड यील्ड (Dividend Yield):** {info.get('dividendYield', 0)*100 if info.get('dividendYield') else 'N/A'}%")
+            div_yield = info.get('dividendYield')
+            div_val = f"{div_yield * 100:.2f}%" if div_yield else 'N/A'
+            st.write(f"**डिविडेंड यील्ड (Dividend Yield):** {div_val}")
             st.write(f"**52 वीक हाई:** {info.get('fiftyTwoWeekHigh', 'N/A')}")
             st.write(f"**52 वीक लो:** {info.get('fiftyTwoWeekLow', 'N/A')}")
             
@@ -167,7 +161,6 @@ elif menu == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
     
     st.markdown(f"**चयनित रणनीति:** `{scanner_type}`")
     
-    # Sample scanner results dataframe matching your layout
     scanner_data = {
         "Symbol": ["HFCL.NS", "TATAPOWER.NS", "RELIANCE.NS", "ZOMATO.NS", "HSCL.NS"],
         "Company": ["HFCL Limited", "The Tata Power Company", "Reliance Industries", "Zomato Limited", "Himadri Speciality"],
@@ -180,5 +173,4 @@ elif menu == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
 
 # Footer Disclaimer
 st.markdown("---")
-st.markdown("⚠️ **कानूनी सूचना (Disclaimer):** TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह ज़रूर लें[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span)।")
-            
+st.markdown("⚠️ **कानूनी सूचना (Disclaimer):** TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह ज़रूर लें。")
