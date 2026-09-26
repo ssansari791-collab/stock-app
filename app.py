@@ -15,23 +15,52 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Hide all default streamlit headers, footers and menu */
     header {visibility: hidden !important;}
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     .stDeployButton {display: none !important;}
     section[data-testid="stSidebar"] { display: none !important; }
     
-    .main { background-color: #0f172a; color: #f8fafc; padding-top: 0px !important; }
-    .stApp { background-color: #0f172a; }
+    .main { background-color: #0b0f19; color: #f8fafc; padding-top: 0px !important; }
+    .stApp { background-color: #0b0f19; }
+    
+    /* Groww Style Top Bar */
+    .groww-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        margin-bottom: 15px;
+    }
+    
+    /* Groww Style Banner Card */
+    .groww-banner {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 20px;
+    }
     
     .metric-card {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        padding: 15px;
+        background-color: #161e2e;
+        border: 1px solid #26334d;
+        padding: 16px;
+        border-radius: 14px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        margin-bottom: 12px;
+    }
+    
+    .stock-card {
+        background-color: #161e2e;
+        border: 1px solid #26334d;
+        padding: 14px;
         border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        margin-bottom: 10px;
+        text-align: center;
+        transition: 0.2s;
+    }
+    .stock-card:hover {
+        border-color: #00d09c;
     }
     
     .badge-good { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
@@ -39,8 +68,8 @@ st.markdown("""
     .badge-danger { background-color: #7f1d1d; color: #f87171; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
     
     .disclaimer-box {
-        background-color: #1e293b;
-        border-left: 4px solid #f59e0b;
+        background-color: #161e2e;
+        border-left: 4px solid #00d09c;
         padding: 15px;
         border-radius: 8px;
         margin-top: 30px;
@@ -48,7 +77,7 @@ st.markdown("""
         color: #94a3b8;
     }
     
-    h1, h2, h3 { color: #f8fafc !important; }
+    h1, h2, h3, h4 { color: #f8fafc !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -101,7 +130,7 @@ def render_tradingview_chart(symbol):
         "theme": "dark",
         "style": "1",
         "locale": "in",
-        "toolbar_bg": "#1e293b",
+        "toolbar_bg": "#161e2e",
         "enable_publishing": false,
         "allow_symbol_change": false,
         "details": false,
@@ -138,15 +167,15 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# EXACT CORNER-TO-CORNER TOP BAR (FLEXBOX)
+# GROWW STYLE TOP BAR
 # ==========================================
-top_col1, top_col2 = st.columns([10, 1])
+col_logo, col_search_icon, col_profile = st.columns([6, 1, 1])
 
-with top_col1:
-    st.markdown("<h3 style='margin:0; padding:0; color:#38bdf8;'>🟢 TickStock</h3>", unsafe_allow_html=True)
+with col_logo:
+    st.markdown("<h3 style='margin:0; color:#00d09c;'>🟢 TickStock</h3>", unsafe_allow_html=True)
 
-with top_col2:
-    with st.popover("⚙️"):
+with col_profile:
+    with st.popover("👤"):
         st.write("### यूजर प्रोफाइल")
         uploaded_file = st.file_uploader("फोटो लगाएं", type=["jpg", "png", "jpeg"])
         if uploaded_file is not None:
@@ -157,29 +186,38 @@ with top_col2:
         if st.button("शेयर ऐप"):
             st.success("लिंक कॉपी हो गया है!")
 
-# वेलकम ग्रीटिंग और सर्च बार
-st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User 👋</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='margin: 5px 0 15px 0; color: #94a3b8; font-size: 1rem;'>Welcome, User 👋</h4>", unsafe_allow_html=True)
+
+# ==========================================
+# GROWW STYLE TABS (Explore, Dashboard, etc.)
+# ==========================================
+app_mode = st.radio(
+    "Navigation", 
+    ["📈 Explore (लाइव चार्ट)", "📑 Dashboard (फंडामेंटल)", "🔍 Scanners (स्कैनर)"], 
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
 st.markdown("---")
 
 # ==========================================
-# SEARCH & NAVIGATION SECTION
+# SEARCH SECTION (Groww Style Banner)
 # ==========================================
+st.markdown("""
+<div class="groww-banner">
+  <h3 style="margin-top:0; color:#f8fafc;">Smart Stock Analysis & Insights</h3>
+  <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:15px;">Search any stock or pick from popular choices below to get started instantly.</p>
+</div>
+""", unsafe_allow_html=True)
+
 col_s1, col_s2 = st.columns(2)
 with col_s1:
     popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
-    selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
+    selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stocks)", popular_stocks)
 with col_s2:
-    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS, ZOMATO.NS")
+    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. ZOMATO.NS, TATAPOWER.NS")
 
 ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticker
-
-st.markdown("---")
-
-app_mode = st.radio(
-    "मेनु चुनें (Navigation)", 
-    ["📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)", "📑 फंडामेंटल हेल्थ (Fundamental Health)", "🔍 स्मार्ट स्कैनर (Smart Scanners)"], 
-    horizontal=True
-)
 
 st.markdown("---")
 
@@ -189,22 +227,23 @@ info, hist_data = fetch_stock_data(ticker_symbol)
 # MAIN VIEWS
 # ==========================================
 
-if app_mode == "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)":
+if "Explore" in app_mode:
     st.subheader(f"विश्लेषण (Analyzing): {info.get('longName', ticker_symbol)}")
     curr_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
     
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"<div class='metric-card'><h4>लाइव भाव (Price)</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><span style='color:#94a3b8; font-size:0.85rem;'>लाइव भाव (Price)</span><h3 style='margin:5px 0 0 0; color:#00d09c;'>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"<div class='metric-card'><h4>52W हाई (High)</h4><h3>₹ {info.get('fiftyTwoWeekHigh', 'N/A')}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><span style='color:#94a3b8; font-size:0.85rem;'>52W हाई (High)</span><h3 style='margin:5px 0 0 0;'>₹ {info.get('fiftyTwoWeekHigh', 'N/A')}</h3></div>", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"<div class='metric-card'><h4>52W लो (Low)</h4><h3>₹ {info.get('fiftyTwoWeekLow', 'N/A')}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><span style='color:#94a3b8; font-size:0.85rem;'>52W लो (Low)</span><h3 style='margin:5px 0 0 0;'>₹ {info.get('fiftyTwoWeekLow', 'N/A')}</h3></div>", unsafe_allow_html=True)
     with c4:
         mcap = info.get('marketCap', 0)
-        st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
+        mcap_str = f"₹ {mcap:,}" if mcap else "N/A"
+        st.markdown(f"<div class='metric-card'><span style='color:#94a3b8; font-size:0.85rem;'>मार्केट कैप</span><h3 style='margin:5px 0 0 0;'>{mcap_str}</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट (TradingView Real-Time Chart)")
+    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट")
     render_tradingview_chart(ticker_symbol)
     
     st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
@@ -218,7 +257,7 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         with p3:
             st.markdown(f"<div class='metric-card'><b>रेजिस्टेंस 2:</b> {pivots['R2']}<br><b>रेजिस्टेंस 3:</b> {pivots['R3']}</div>", unsafe_allow_html=True)
 
-elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
+elif "Dashboard" in app_mode:
     st.subheader(f"कंपनी की वित्तीय सेहत: {info.get('longName', ticker_symbol)}")
     
     pe = info.get('trailingPE', None)
@@ -236,8 +275,8 @@ elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental 
     de_val, de_badge = get_smart_badge("Debt to Equity", de)
     st.markdown(f"<div class='metric-card'><b>डेट टू इक्विटी (कर्ज):</b> <span class='{de_badge}'>{de_val}</span></div>", unsafe_allow_html=True)
 
-elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
-    st.subheader("🔍 स्टॉक स्कैनर और फिल्टर")
+elif "Scanners" in app_mode:
+    st.subheader("🔍 स्मार्ट स्टॉक स्कैनर")
     strategy = st.selectbox("फिल्टर चुनें", ["ब्रेकआउट / 52-वीक हाई के करीब", "कम कर्ज वाली कंपनियां"])
     
     if st.button("स्कैन शुरू करें", type="primary"):
