@@ -52,14 +52,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# ADVANCED UNIVERSAL TICKER RESOLVER
+# UNIVERSAL SMART TICKER RESOLVER
 # ==========================================
 def resolve_ticker(user_input):
     clean = user_input.upper().strip()
     if not clean:
         return "RELIANCE.NS"
         
-    # लोकप्रिय शेयरों के शॉर्टकट और सही टिकर मैपिंग
     mapping = {
         "RELIANCE": "RELIANCE.NS",
         "TCS": "TCS.NS",
@@ -74,9 +73,8 @@ def resolve_ticker(user_input):
         "SUZLON": "SUZLON.NS",
         "MARINE": "MARINE.NS",
         "JUPITER": "JUPITERWAG.NS",
-        "JUPITERWAG": "JUPITERWAG.NS",
-        "TEXMACO": "TEXRAIL.NS",
-        "TEXINFRA": "TEXINFRA.NS",
+        "RAMASTEEL": "RAMASTEEL.NS",
+        "TEXRAIL": "TEXRAIL.NS",
         "BODAL": "BODALCHEM.NS",
         "TATAPOWER": "TATAPOWER.NS",
         "ADANIENT": "ADANIENT.NS"
@@ -88,7 +86,6 @@ def resolve_ticker(user_input):
     if ".NS" in clean or ".BO" in clean:
         return clean
         
-    # अगर कोई नया नाम लिखा है तो बिना स्पेस के .NS जोड़ देगा
     formatted = clean.replace(" ", "")
     return f"{formatted}.NS"
 
@@ -118,8 +115,8 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
-def render_tradingview_chart(symbol):
-    clean_sym = symbol.replace(".NS", "").replace(".BO", "").upper()
+def render_tradingview_chart(ticker_symbol):
+    clean_sym = ticker_symbol.replace(".NS", "").replace(".BO", "").upper()
     tv_symbol = f"NSE:{clean_sym}"
     
     widget_html = f"""
@@ -139,7 +136,7 @@ def render_tradingview_chart(symbol):
         "locale": "in",
         "toolbar_bg": "#1e293b",
         "enable_publishing": false,
-        "allow_symbol_change": true,  /* चार्ट के अंदर से भी कोई दूसरा शेयर सर्च करने की सुविधा */
+        "allow_symbol_change": true,
         "details": false,
         "hotlist": false,
         "calendar": false,
@@ -197,9 +194,9 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# UNIVERSAL FREE-TEXT SEARCH BAR (कोई भी नया शेयर टाइप करें)
+# UNIVERSAL FREE-TEXT SEARCH BAR
 # ==========================================
-search_query = st.text_input("🔍 कोई भी शेयर सर्च करें (उदा. Texmaco, Reliance, Zomato, Tata):", value="RELIANCE")
+search_query = st.text_input("🔍 कोई भी शेयर सर्च करें (उदा. Ramasteel, Reliance, Zomato, Tata, Suzlon):", value="RELIANCE")
 ticker_symbol = resolve_ticker(search_query)
 
 st.markdown("---")
@@ -323,7 +320,8 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
             universe = [
                 "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
                 "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", 
-                "JUPITERWAG.NS", "TEXRAIL.NS", "BODALCHEM.NS", "TRENT.NS", "DIXON.NS", "POLYCAB.NS", "KAYNES.NS", "ADANIENT.NS"
+                "JUPITERWAG.NS", "RAMASTEEL.NS", "TEXRAIL.NS", "BODALCHEM.NS", 
+                "TRENT.NS", "DIXON.NS", "POLYCAB.NS", "KAYNES.NS", "ADANIENT.NS"
             ]
             res = []
             for s in universe:
