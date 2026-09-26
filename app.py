@@ -13,13 +13,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS to hide sidebar and style the clean top-to-bottom UI
 st.markdown("""
     <style>
-    [data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {
-        display: none !important;
-        width: 0px !important;
-    }
+    /* ऊपर के सभी वेबसाइट जैसे हेडर, गिटहब, फोर्क और कनेक्टिंग बार को हमेशा के लिए छिपाने के लिए */
+    header {visibility: hidden !important;}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    .stDeployButton {display: none !important;}
+    
+    /* Hide Sidebar completely */
+    section[data-testid="stSidebar"] { display: none !important; }
     
     .main { background-color: #0f172a; color: #f8fafc; }
     .stApp { background-color: #0f172a; }
@@ -86,14 +89,14 @@ def render_tradingview_chart(symbol):
     tv_symbol = f"NSE:{clean_sym}"
     
     widget_html = f"""
-    <div class="tradingview-widget-container" style="height:550px;width:100%">
+    <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget(
       {{
         "width": "100%",
-        "height": "550",
+        "height": "500",
         "symbol": "{tv_symbol}",
         "interval": "D",
         "timezone": "Asia/Kolkata",
@@ -102,22 +105,21 @@ def render_tradingview_chart(symbol):
         "locale": "in",
         "toolbar_bg": "#1e293b",
         "enable_publishing": false,
-        "allow_symbol_change": true,
+        "allow_symbol_change": false,
         "details": false,
         "hotlist": false,
         "calendar": false,
         "studies": [
           "RSI@tv-basicstudies",
           "MACD@tv-basicstudies",
-          "SuperTrend@tv-basicstudies",
-          "BB@tv-basicstudies"
+          "SuperTrend@tv-basicstudies"
         ],
         "container_id": "tradingview_chart"
       }});
       </script>
     </div>
     """
-    components.html(widget_html, height=560, scrolling=False)
+    components.html(widget_html, height=510, scrolling=False)
 
 def get_smart_badge(metric_name, value):
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -138,17 +140,17 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# TOP-TO-BOTTOM LAYOUT
+# TOP-TO-BOTTOM FLOW LAYOUT
 # ==========================================
 st.markdown("## ⚡ TickStock Pro Portal")
 st.markdown("---")
 
 col_s1, col_s2 = st.columns(2)
 with col_s1:
-    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS", "ZOMATO.NS", "SUZLON.NS", "RVNL.NS"]
+    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
     selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
 with col_s2:
-    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS, ZOMATO.NS")
+    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS")
 
 ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticker
 
@@ -183,7 +185,7 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         mcap = info.get('marketCap', 0)
         st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 ट्रेडिंगव्यू एडवांस्ड लाइव चार्ट")
+    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट (TradingView Real-Time Chart)")
     render_tradingview_chart(ticker_symbol)
     
     st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
@@ -216,80 +218,25 @@ elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental 
     st.markdown(f"<div class='metric-card'><b>डेट टू इक्विटी (कर्ज):</b> <span class='{de_badge}'>{de_val}</span></div>", unsafe_allow_html=True)
 
 elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
-    st.subheader("🔍 प्रो स्टॉक स्कैनर और फिल्टर")
+    st.subheader("🔍 स्टॉक स्कैनर और फिल्टर")
+    strategy = st.selectbox("फिल्टर चुनें", ["ब्रेकआउट / 52-वीक हाई के करीब", "कम कर्ज वाली कंपनियां"])
     
-    strategy = st.selectbox(
-        "स्कैनिंग रणनीति चुनें (Select Strategy)", 
-        [
-            "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)", 
-            "कम कर्ज वाली कंपनियां (Low Debt Companies)", 
-            "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)",
-            "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)",
-            "🚀 हाई P/E मोमेंटम स्टॉक्स (High P/E Growth Stocks)"
-        ]
-    )
-    
-    if st.button("🚀 स्कैन शुरू करें (Run Scan)", type="primary"):
-        universe = [
-            "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
-            "TATAMOTORS.NS", "SBIN.NS", "ICICIBANK.NS", "BHARTIARTL.NS", 
-            "MARINE.NS", "ZOMATO.NS", "SUZLON.NS", "RVNL.NS", "IRFC.NS",
-            "NYKAA.NS", "TRIDENT.NS", "JPPOWER.NS", "YESBANK.NS", "IDEA.NS",
-            "ADANIENT.NS", "HAL.NS", "BEL.NS", "COCHINSHIP.NS", "TITAN.NS", "BAJFINANCE.NS"
-        ]
-
-        with st.spinner("बाजार से नए और लाइव शेयर स्कैन किए जा रहे हैं..."):
-            res = []
-            for s in universe:
-                try:
-                    tk = yf.Ticker(s)
-                    inf = tk.info
-                    name = inf.get('longName', s)
-                    price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
-                    h52 = inf.get('fiftyTwoWeekHigh', 0)
-                    pe = inf.get('trailingPE', None)
-                    roe = inf.get('returnOnEquity', 0)
-                    if roe and roe < 1: 
-                        roe = roe * 100
-                    de = inf.get('debtToEquity', 0)
-                    if de is None: 
-                        de = 0
-
-                    match = False
-                    if strategy == "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)":
-                        if h52 and price and (price >= 0.85 * h52):
-                            match = True
-                    elif strategy == "कम कर्ज वाली कंपनियां (Low Debt Companies)":
-                        if de < 0.5:
-                            match = True
-                    elif strategy == "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)":
-                        if pe and pe < 25 and roe and roe > 10:
-                            match = True
-                    elif strategy == "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)":
-                        if roe and roe > 15:
-                            match = True
-                    elif strategy == "🚀 हाई P/E मोमेंटम स्टॉक्स (High P/E Growth Stocks)":
-                        if pe and pe > 35:
-                            match = True
-
-                    if match:
-                        res.append({
-                            "टिकर (Symbol)": s,
-                            "कंपनी (Company)": name,
-                            "भाव (₹)": price,
-                            "P/E": round(pe, 2) if pe else 'N/A',
-                            "ROE (%)": round(roe, 2) if roe else 'N/A',
-                            "कर्ज (Debt/Eq)": round(de, 2) if de is not None else 'N/A',
-                            "52W हाई (₹)": h52
-                        })
-                except Exception:
-                    continue
-
-            if res:
-                st.success(f"सफलतापूर्वक {len(res)} शेयर मिले जो इस शर्त को पूरा करते हैं!")
-                st.dataframe(pd.DataFrame(res), use_container_width=True)
-            else:
-                st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले। कृपया दूसरा फिल्टर चुनें।")
+    if st.button("स्कैन शुरू करें", type="primary"):
+        universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS"]
+        res = []
+        for s in universe:
+            try:
+                inf = yf.Ticker(s).info
+                price = inf.get('currentPrice', 0)
+                h52 = inf.get('fiftyTwoWeekHigh', 0)
+                if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price >= 0.90 * h52:
+                    res.append({"Symbol": s, "Name": inf.get('longName'), "Price": price, "52W High": h52})
+            except:
+                pass
+        if res:
+            st.dataframe(pd.DataFrame(res), use_container_width=True)
+        else:
+            st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले।")
 
 # ==========================================
 # DISCLAIMER FOOTER
