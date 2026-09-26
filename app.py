@@ -2,7 +2,6 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -80,44 +79,6 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
-def render_plotly_chart(hist, symbol):
-    """Renders a clean, interactive professional candlestick chart without any popups."""
-    if hist.empty:
-        st.warning("चार्ट के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
-        return
-
-    fig = go.Figure(data=[go.Candlestick(
-        x=hist.index,
-        open=hist['Open'],
-        high=hist['High'],
-        low=hist['Low'],
-        close=hist['Close'],
-        name='Price'
-    )])
-    
-    # Add 20-day Moving Average for technical analysis
-    hist['MA20'] = hist['Close'].rolling(window=20).mean()
-    fig.add_trace(go.Scatter(
-        x=hist.index, 
-        y=hist['MA20'], 
-        mode='lines', 
-        name='MA 20', 
-        line=dict(color='#38bdf8', width=1.5)
-    ))
-
-    fig.update_layout(
-        title=dict(text=f"{symbol} - Interactive Price Chart", font=dict(color='white', size=16)),
-        xaxis_title="Date",
-        yaxis_title="Price (₹)",
-        template="plotly_dark",
-        height=500,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor='#0f172a',
-        plot_bgcolor='#1e293b',
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
 def get_smart_badge(metric_name, value):
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return "N/A", "badge-warning"
@@ -182,8 +143,12 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         mcap = info.get('marketCap', 0)
         st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 प्रोफेशनल कैंडलस्टिक चार्ट (Clean Pro Chart)")
-    render_plotly_chart(hist_data, ticker_symbol)
+    st.markdown("### 📊 स्टॉक प्राइस चार्ट (Clean Price Trend)")
+    if not hist_data.empty:
+        # Using Streamlit's built-in fast native chart (No external module error)
+        st.line_chart(hist_data['Close'])
+    else:
+        st.warning("चार्ट के लिए डेटा उपलब्ध नहीं है।")
     
     st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
     pivots = calculate_pivot_points(hist_data)
@@ -243,6 +208,7 @@ st.markdown("""
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
