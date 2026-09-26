@@ -52,12 +52,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS & SMART TICKER MAPPER
+# HELPER FUNCTIONS & ADVANCED SEARCH MAPPER
 # ==========================================
 
 def format_ticker(query):
     query = query.upper().strip()
-    # Common popular Indian stock shortcuts mapping
+    if not query:
+        return "RELIANCE.NS"
+        
+    # अगर यूजर ने पहले से .NS या .BO लिखा है
+    if ".NS" in query or ".BO" in query:
+        return query
+        
+    # कुछ लोकप्रिय शेयरों के शॉर्टकट
     stock_map = {
         "RELIANCE": "RELIANCE.NS",
         "TCS": "TCS.NS",
@@ -70,18 +77,12 @@ def format_ticker(query):
         "ZOMATO": "ZOMATO.NS",
         "HFCL": "HFCL.NS",
         "SUZLON": "SUZLON.NS",
-        "TATAPOWER": "TATAPOWER.NS",
-        "ADANIENT": "ADANIENT.NS"
+        "MARINE": "MARINE.NS"
     }
     
     if query in stock_map:
         return stock_map[query]
-    
-    # If user already entered .NS or .BO, keep it
-    if ".NS" in query or ".BO" in query:
-        return query
         
-    # Default fallback: append .NS for Indian stocks if no extension present
     return f"{query}.NS"
 
 @st.cache_data(ttl=3600)
@@ -119,6 +120,14 @@ def render_tradingview_chart(symbol):
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
+      // TradingView के एरर पॉप-अप को ऑटोमैटिक ब्लॉक करने के लिए
+      window.addEventListener('error', function(e) {{
+          if (e.message && e.message.includes('symbol')) {{
+              e.preventDefault();
+              return true;
+          }}
+      }}, true);
+
       new TradingView.widget(
       {{
         "width": "100%",
@@ -166,7 +175,7 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# PERFECT CORNER-TO-CORNER TOP BAR
+# TOP BAR: LOGO & SETTINGS (CORNER TO CORNER)
 # ==========================================
 header_c1, header_c2 = st.columns([8, 1])
 
@@ -189,9 +198,9 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# SMART SEARCH & NAVIGATION SECTION
+# WORKING SEARCH & NAVIGATION SECTION
 # ==========================================
-user_query = st.text_input("🔍 शेयर सर्च करें (Search Stock Ticker)", value="RELIANCE", placeholder="जैसे: RELIANCE, TCS, HFCL, ZOMATO")
+user_query = st.text_input("🔍 शेयर सर्च करें (Search Stock Ticker)", value="MARINE", placeholder="जैसे: MARINE, RELIANCE, TCS, ZOMATO")
 ticker_symbol = format_ticker(user_query)
 
 st.markdown("---")
