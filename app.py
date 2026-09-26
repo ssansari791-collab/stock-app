@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import streamlit.components.v1 as components
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -12,6 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
+# CSS to hide sidebar completely and maintain top-to-bottom flow
 st.markdown("""
     <style>
     [data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {
@@ -79,6 +81,44 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
+def render_tradingview_chart(symbol):
+    clean_sym = symbol.replace(".NS", "").upper()
+    tv_symbol = f"NSE:{clean_sym}"
+    
+    widget_html = f"""
+    <div class="tradingview-widget-container" style="height:550px;width:100%">
+      <div id="tradingview_chart" style="height:100%;width:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget(
+      {{
+        "width": "100%",
+        "height": "550",
+        "symbol": "{tv_symbol}",
+        "interval": "D",
+        "timezone": "Asia/Kolkata",
+        "theme": "dark",
+        "style": "1",
+        "locale": "in",
+        "toolbar_bg": "#1e293b",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "details": false,
+        "hotlist": false,
+        "calendar": false,
+        "studies": [
+          "RSI@tv-basicstudies",
+          "MACD@tv-basicstudies",
+          "SuperTrend@tv-basicstudies",
+          "BB@tv-basicstudies"
+        ],
+        "container_id": "tradingview_chart"
+      }});
+      </script>
+    </div>
+    """
+    components.html(widget_html, height=560, scrolling=False)
+
 def get_smart_badge(metric_name, value):
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return "N/A", "badge-warning"
@@ -143,12 +183,8 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         mcap = info.get('marketCap', 0)
         st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 स्टॉक प्राइस चार्ट (Clean Price Trend)")
-    if not hist_data.empty:
-        # Using Streamlit's built-in fast native chart (No external module error)
-        st.line_chart(hist_data['Close'])
-    else:
-        st.warning("चार्ट के लिए डेटा उपलब्ध नहीं है।")
+    st.markdown("### 📊 ट्रेडिंगव्यू एडवांस्ड लाइव चार्ट (TradingView Advanced Chart)")
+    render_tradingview_chart(ticker_symbol)
     
     st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
     pivots = calculate_pivot_points(hist_data)
@@ -208,6 +244,7 @@ st.markdown("""
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
