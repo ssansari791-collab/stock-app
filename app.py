@@ -52,7 +52,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# ADVANCED MAPPING & SEARCH ENGINE
+# ADVANCED MAPPING & SEARCH ENGINE (FIXED)
 # ==========================================
 def resolve_stock(user_input):
     clean = user_input.upper().strip()
@@ -61,7 +61,8 @@ def resolve_stock(user_input):
         
     # प्रमुख शेयरों के लिए सटीक याहू और ट्रेडिंगव्यू मैपिंग
     mapping = {
-        "HIMADRI": {"yf": "HIMATSEID.NS", "tv": "NSE:HIMATSEID"},
+        "HIMADRI": {"yf": "HSCL.NS", "tv": "NSE:HSCL"},
+        "HSCL": {"yf": "HSCL.NS", "tv": "NSE:HSCL"},
         "HIMATSEID": {"yf": "HIMATSEID.NS", "tv": "NSE:HIMATSEID"},
         "RELIANCE": {"yf": "RELIANCE.NS", "tv": "NSE:RELIANCE"},
         "TCS": {"yf": "TCS.NS", "tv": "NSE:TCS"},
@@ -75,7 +76,8 @@ def resolve_stock(user_input):
         "HFCL": {"yf": "HFCL.NS", "tv": "NSE:HFCL"},
         "SUZLON": {"yf": "SUZLON.NS", "tv": "NSE:SUZLON"},
         "JUPITER": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
-        "REFEX": {"yf": "REFEX.NS", "tv": "BSE:REFEX"}
+        "JUPITERWAG": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
+        "REFEX": {"yf": "REFEX.NS", "tv": "NSE:REFEX"}
     }
     
     if clean in mapping:
@@ -98,7 +100,7 @@ def fetch_stock_data(ticker_symbol):
         info = stock.info
         hist = stock.history(period="6mo")
         return info, hist
-    except Exception as e:
+    except Exception:
         return {}, pd.DataFrame()
 
 def calculate_pivot_points(hist):
@@ -220,10 +222,22 @@ info, hist_data = fetch_stock_data(ticker_symbol)
 if app_mode == "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)":
     st.subheader(f"📊 {ticker_symbol} - बाजार सारांश")
     
+    # yfinance से डेटा ना मिलने पर Fallback लॉजिक
     curr_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
+    if curr_price == 'N/A' and not hist_data.empty:
+        curr_price = round(hist_data['Close'].iloc[-1], 2)
+        
     day_high = info.get('dayHigh', 'N/A')
+    if day_high == 'N/A' and not hist_data.empty:
+        day_high = round(hist_data['High'].iloc[-1], 2)
+        
     day_low = info.get('dayLow', 'N/A')
+    if day_low == 'N/A' and not hist_data.empty:
+        day_low = round(hist_data['Low'].iloc[-1], 2)
+        
     volume = info.get('volume', 'N/A')
+    if volume == 'N/A' and not hist_data.empty:
+        volume = int(hist_data['Volume'].iloc[-1])
     
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -285,7 +299,7 @@ elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental 
         {"Metric": "Market Capitalization", "Val": f"₹ {mcap:,}" if mcap else "N/A", "Badge": "badge-warning", "Hint": "कंपनी का कुल बाजार मूल्यांकन"},
         {"Metric": "P/E Ratio", "Val": get_smart_badge("P/E Ratio", pe)[0], "Badge": get_smart_badge("P/E Ratio", pe)[1], "Hint": "प्रति शेयर आय के मुकाबले मूल्य (<15 आकर्षक, >30 हाई ग्रोथ)"},
         {"Metric": "P/B Ratio", "Val": f"{pb:.2f}" if pb else "N/A", "Badge": "badge-warning", "Hint": "बुक वैल्यू के मुकाबले कीमत"},
-        {"Metric": "ROE", "Val": get_smart_badge("ROE", roe)[0], "Badge": get_smart_badge("ROE", roe)[1], "Hint": "इक्विटी पर रिटर्न (>15% स्वास्थ्यवध)"},
+        {"Metric": "ROE", "Val": get_smart_badge("ROE", roe)[0], "Badge": get_smart_badge("ROE", roe)[1], "Hint": "इक्विटी पर रिटर्न (>15% स्वास्थ्यवर्धक)"},
         {"Metric": "ROCE", "Val": get_smart_badge("ROCE", roce)[0], "Badge": get_smart_badge("ROCE", roce)[1], "Hint": "नियोजित पूंजी पर रिटर्न (>15% मजबूत)"},
         {"Metric": "EPS", "Val": f"₹ {eps:.2f}" if eps else "N/A", "Badge": "badge-warning", "Hint": "प्रति शेयर कमाई"},
         {"Metric": "Debt to Equity", "Val": get_smart_badge("Debt to Equity", de)[0], "Badge": get_smart_badge("Debt to Equity", de)[1], "Hint": "वित्तीय जोखिम और कर्ज (<0.5 सुरक्षित)"},
@@ -319,7 +333,7 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
             universe = [
                 "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
                 "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", 
-                "JUPITERWAG.NS", "HIMATSEID.NS", "REFEX.NS", "TATAPOWER.NS"
+                "JUPITERWAG.NS", "HSCL.NS", "REFEX.NS", "TATAPOWER.NS"
             ]
             res = []
             for s in universe:
