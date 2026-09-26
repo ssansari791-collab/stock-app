@@ -5,8 +5,6 @@ import urllib.request
 import json
 st.set_page_config(page_title="TickStox", layout="wide")
 
-
-
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
 def fetch_stock_suggestions(query):
     try:
@@ -26,7 +24,6 @@ def fetch_stock_suggestions(query):
                 short_name = q.get('shortname', q.get('longname', symbol))
                 exchange = q.get('exchange', '')
                 
-                # Filter for Indian markets (.NS for NSE, .BO for BSE or standard Indian exchanges)
                 if symbol.endswith('.NS') or symbol.endswith('.BO') or exchange in ['NSI', 'BSE', 'NSE']:
                     stock_options.append({
                         'display': f"{short_name} ({symbol})",
@@ -36,15 +33,35 @@ def fetch_stock_suggestions(query):
     except:
         return []
 
+# ==================== नया फीचर: स्टॉक कैटेगरी / थीम्स (Stock Categories Screener) ====================
+st.sidebar.markdown("### 🔍 स्टॉक श्रेणियां (Smart Screeners)")
+category_choice = st.sidebar.selectbox(
+    "लोकप्रिय श्रेणियां चुनें:", 
+    ["--- मैन्युअल सर्च करें ---", "🚀 हाई ग्रोथ / मोमेंटम (High Growth)", "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)", "💰 उच्च लाभांश वाले (High Dividend Yield)"]
+)
+
+# प्री-डिफ़ाइंड लोकप्रिय भारतीय शेयरों की सूचियाँ (श्रेणियों के अनुसार)
+screener_stocks = {
+    "🚀 हाई ग्रोथ / मोमेंटम (High Growth)": ["ZOMATO.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "HAL.NS", "COCHINSHIP.NS"],
+    "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS"],
+    "💰 उच्च लाभांश वाले (High Dividend Yield)": ["COALINDIA.NS", "VEDL.NS", "ONGC.NS", "IOC.NS", "POWERGRID.NS", "NTPC.NS"]
+}
+
+default_query = "RELIANCE"
+if category_choice != "--- मैन्युअल सर्च करें ---":
+    # यदि यूजर ने कोई कैटेगरी चुनी है, तो उस लिस्ट से पहला स्टॉक डिफ़ॉल्ट ले लेंगे या सेलेक्टर दिखाएंगे
+    selected_category_list = screener_stocks[category_choice]
+    chosen_cat_stock = st.sidebar.selectbox("सूची से चुनें:", selected_category_list)
+    default_query = chosen_cat_stock.replace(".NS", "").replace(".BO", "")
+
 # User Input Search Box
-user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Aegis, Tata, Marine, Reliance):", "RELIANCE")
+user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Aegis, Tata, Marine, Reliance):", default_query)
 
 selected_symbol = "RELIANCE.NS"
 
 if user_query:
     clean_query = user_query.strip()
     
-    # Live search from internet
     with st.spinner("🔍 इंटरनेट से शेयर खोजे जा रहे हैं..."):
         suggestions = fetch_stock_suggestions(clean_query)
     
@@ -53,7 +70,6 @@ if user_query:
         chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची (सूची से चुनें):", list(options_map.keys()))
         selected_symbol = options_map[chosen_display]
     else:
-        # Direct fallback: if search API is busy, try formatting directly with .NS or .BO
         upper_q = clean_query.upper().replace(" ", "")
         if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
             selected_symbol = upper_q + ".NS"
@@ -68,7 +84,6 @@ try:
     df = stock.history(period="6mo")
     
     if df.empty:
-        # Try BSE (.BO) if NSE (.NS) fails
         if selected_symbol.endswith(".NS"):
             bse_symbol = selected_symbol.replace(".NS", ".BO")
             stock = yf.Ticker(bse_symbol)
@@ -79,18 +94,13 @@ try:
     if df.empty:
         st.error(f"❌ '{selected_symbol}' का डेटा नहीं मिला। कृपया कंपनी का नाम सही से लिखें।")
     else:
-        # ==================== आगामी इवेंट्स / रिजल्ट अलर्ट (Upcoming Events Alert) ====================
+        # कॉर्पोरेट इवेंट्स अलर्ट
         try:
             calendar = stock.calendar
             if calendar is not None and not isinstance(calendar, dict) and not calendar.empty:
-                st.warning(f"🔔 **कॉर्पोरेट अपडेट अलर्ट ({selected_symbol}):** इस स्टॉक से जुड़े आगामी इवेंट्स (जैसे अर्निंग्स रिजल्ट या डिविडेंड तारीख) नज़दीक हैं। कृपया आधिकारिक एक्सचेंज वेबसाइट की जाँच करें।")
+                st.warning(f"🔔 **कॉर्पोरेट अपडेट अलर्ट ({selected_symbol}):** इस स्टॉक से जुड़े आगामी इवेंट्स (जैसे अर्निंग्स रिजल्ट या डिविडेंड तारीख) नज़दीक हैं।")
             elif isinstance(calendar, dict) and len(calendar) > 0:
-                st.warning(f"🔔 **कॉर्पोरेट अपडेट अलर्ट ({selected_symbol}):** आगामी वित्तीय परिणाम या कॉर्पोरेट एक्शन संभावित हैं।")
-            else:
-                # सामान्य स्थिति में आगामी डिविडेंड या तारीख की जानकारी निकालना
-                next_div_date = stock.info.get('exDividendDate', None)
-                if next_div_date:
-                    st.info(f"💡 **सूचना:** इस स्टॉक की डिविडेंड / कॉर्पोरेट एक्शन से जुड़ी तिथियां आ सकती हैं।")
+                st.warning(f"🔔 **कॉर्पोरेट अपडेट अलर्ट ({selected_symbol}):** आगामी वित्तीय परिणाम संभावित हैं।")
         except:
             pass
 
@@ -159,7 +169,7 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल और वित्तीय परिणाम (Financials & Results Summary) ====================
+        # ==================== फंडामेंटल और वित्तीय प्रदर्शन ====================
         st.divider()
         st.markdown("### 🏢 फंडामेंटल डेटा और वित्तीय प्रदर्शन (Financial Results Summary)")
         try:
@@ -190,11 +200,9 @@ try:
             f6.metric("52 वीक हाई (High)", f"₹{high_52}" if high_52 == 'N/A' else f"₹{high_52:.2f}")
             f7.metric("52 वीक लो (Low)", f"₹{low_52}" if low_52 == 'N/A' else f"₹{low_52:.2f}")
 
-            # वित्तीय विवरण का निचोड़ (Income Statement Summary Table)
             financials = stock.financials
             if financials is not None and not financials.empty:
                 st.markdown("#### 📄 वार्षिक वित्तीय प्रदर्शन का निचोड़ (Annual Financials)")
-                # कुल आय और शुद्ध लाभ की प्रमुख पंक्तियाँ चुनना
                 rev_row = [col for col in financials.index if 'Total Revenue' in col or 'Revenue' in col]
                 net_row = [col for col in financials.index if 'Net Income' in col]
                 
@@ -205,9 +213,8 @@ try:
                     summary_df.loc['शुद्ध लाभ (Net Income)'] = financials.loc[net_row[0]]
                 
                 if not summary_df.empty:
-                    # केवल हाल के 3 साल/अवधि दिखाना
-                    st.dataframe(summary_df.iloc[:, :3] / 10000000) # करोड़ों में बदलने के लिए
-                    st.caption("* नोट: पर Jumbling से बचने के लिए वित्तीय आंकड़े करोड़ (Cr) में प्रदर्शित किए गए हैं।")
+                    st.dataframe(summary_df.iloc[:, :3] / 10000000)
+                    st.caption("* नोट: आंकड़े करोड़ (Cr) में प्रदर्शित किए गए हैं।")
 
         except Exception as fund_err:
             st.info("वित्तीय परिणाम लोड करने में असमर्थ।")
