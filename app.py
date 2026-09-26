@@ -224,18 +224,18 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
             "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)", 
             "कम कर्ज वाली कंपनियां (Low Debt Companies)", 
             "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)",
-            "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)"
+            "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)",
+            "🚀 हाई P/E मोमेंटम स्टॉक्स (High P/E Growth Stocks)"
         ]
     )
     
     if st.button("🚀 स्कैन शुरू करें (Run Scan)", type="primary"):
-        # Expanded and updated dynamic stock universe including trending, midcap, smallcap, and popular stocks
         universe = [
             "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
             "TATAMOTORS.NS", "SBIN.NS", "ICICIBANK.NS", "BHARTIARTL.NS", 
             "MARINE.NS", "ZOMATO.NS", "SUZLON.NS", "RVNL.NS", "IRFC.NS",
             "NYKAA.NS", "TRIDENT.NS", "JPPOWER.NS", "YESBANK.NS", "IDEA.NS",
-            "ADANIENT.NS", "HAL.NS", "BEL.NS", "COCHINSHIP.NS", "TITAN.NS"
+            "ADANIENT.NS", "HAL.NS", "BEL.NS", "COCHINSHIP.NS", "TITAN.NS", "BAJFINANCE.NS"
         ]
 
         with st.spinner("बाजार से नए और लाइव शेयर स्कैन किए जा रहे हैं..."):
@@ -256,7 +256,6 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
                         de = 0
 
                     match = False
-                    # Improved Breakout condition (Price near or crossing 85% of 52W High)
                     if strategy == "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)":
                         if h52 and price and (price >= 0.85 * h52):
                             match = True
@@ -268,6 +267,9 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
                             match = True
                     elif strategy == "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)":
                         if roe and roe > 15:
+                            match = True
+                    elif strategy == "🚀 हाई P/E मोमेंटम स्टॉक्स (High P/E Growth Stocks)":
+                        if pe and pe > 35:
                             match = True
 
                     if match:
