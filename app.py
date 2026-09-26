@@ -5,8 +5,6 @@ import urllib.request
 import json
 st.set_page_config(page_title="TickStox", layout="wide")
 
-
-
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
 def fetch_stock_suggestions(query):
     try:
@@ -62,17 +60,22 @@ if user_query:
 
 st.write("---")
 
+# Timeframe selection for chart (नया सेफ फीचर)
+timeframe_option = st.selectbox("⏳ चार्ट का समय चुनें (Timeframe):", ["1 महीना (1mo)", "3 महीने (3mo)", "6 महीने (6mo)", "1 साल (1y)"], index=2)
+period_map = {"1 महीना (1mo)": "1mo", "3 महीने (3mo)": "3mo", "6 महीने (6mo)": "6mo", "1 साल (1y)": "1y"}
+selected_period = period_map[timeframe_option]
+
 # Fetch and display live market data and pivot points
 try:
     stock = yf.Ticker(selected_symbol)
-    df = stock.history(period="6mo")
+    df = stock.history(period=selected_period)
     
     if df.empty:
         # Try BSE (.BO) if NSE (.NS) fails
         if selected_symbol.endswith(".NS"):
             bse_symbol = selected_symbol.replace(".NS", ".BO")
             stock = yf.Ticker(bse_symbol)
-            df = stock.history(period="6mo")
+            df = stock.history(period=selected_period)
             if not df.empty:
                 selected_symbol = bse_symbol
                 
@@ -132,19 +135,19 @@ try:
         st.markdown("### 📝 त्वरित विश्लेषण बिंदु")
         reasons = []
         if close_price > pivot:
-            reasons.append(f"✅ शेयर का भाव आज के पिवट पॉइंट (₹{pivot:.2f}) से ऊपर ट्रेड कर रहा है, जो तेजी का संकेत हो सकता है।")
+            reasons.append(f"✅ शेयर का भाव आज के पिवट पॉइंट (₹{pivot:.2f}) से ऊपर ट्रेड कर रहा है, जो तकनीकी रूप से सकारात्मक संकेत माना जाता है।")
         else:
-            reasons.append(f"⚠️ शेयर का भाव पिवट पॉइंट (₹{pivot:.2f}) से नीचे है, जो कमजोरी दिखा सकता है।")
+            reasons.append(f"⚠️ शेयर का भाव पिवट पॉइंट (₹{pivot:.2f}) से नीचे है।")
             
         if close_price > prev_close:
-            reasons.append("📈 पिछला दिन हरे निशान में बंद हुआ था।")
+            reasons.append("📈 पिछला सत्र हरे निशान में बंद हुआ था।")
         else:
-            reasons.append("📉 पिछले दिन की तुलना में गिरावट दर्ज की गई है।")
+            reasons.append("📉 पिछले सत्र की तुलना में गिरावट दर्ज की गई है।")
             
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल डेटा ====================
+        # ==================== फंडामेंटल डेटा (Fundamentals) ====================
         st.divider()
         st.markdown("### 🏢 फंडामेंटल डेटा (Fundamentals)")
         try:
@@ -180,7 +183,7 @@ try:
 
         # ==================== मूल्य और वॉल्यूम चार्ट ====================
         st.divider()
-        st.markdown(f"### 📈 {selected_symbol} - प्राइस और वॉल्यूम चार्ट")
+        st.markdown(f"### 📈 {selected_symbol} - मूल्य और वॉल्यूम चार्ट")
         
         chart_df = pd.DataFrame(index=df.index)
         chart_df['Close Price'] = df['Close']
@@ -190,6 +193,10 @@ try:
         
         st.markdown("#### 📊 वॉल्यूम (Volume)")
         st.bar_chart(df['Volume'])
+
+        # ==================== कानूनी अस्वीकरण (SEBI Disclaimer - सुरक्षा के लिए अनिवार्य) ====================
+        st.markdown("---")
+        st.info("🛡️ **अस्वीकरण (Disclaimer):** यह वेब ऍप्लिकेशन केवल शैक्षिक और सूचना के उद्देश्य (Educational Purpose) के लिए बनाया गया है। यह किसी भी प्रकार की SEBI पंजीकृत निवेश सलाह (Investment Advice) या खरीद/बिक्री की टिप नहीं देता है। शेयर बाजार में निवेश जोखिमों के अधीन है, इसलिए कोई भी वित्तीय निर्णय लेने से पहले अपने वित्तीय सलाहकार (Financial Advisor) से परामर्श अवश्य करें।")
             
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
