@@ -143,6 +143,92 @@ try:
             
         for r in reasons:
             st.write(r)
+
+        # ==================== NEW ADDITIONS (बिना पुराना कोड बदले जोड़े गए फीचर्स) ====================
+        
+        st.divider()
+
+        # 1. Fundamental Data Section (Market Cap, PE, EPS, PB, CAGR etc.)
+        st.markdown("### 🏢 फंडामेंटल डेटा (Fundamentals)")
+        try:
+            info = stock.info
+            market_cap = info.get('marketCap', 'N/A')
+            if market_cap != 'N/A':
+                market_cap_cr = market_cap / 10000000  # Convert to Crores
+                market_cap_str = f"₹{market_cap_cr:,.2f} Cr"
+            else:
+                market_cap_str = "उपलब्ध नहीं"
+
+            pe_ratio = info.get('trailingPE', 'N/A')
+            pb_ratio = info.get('priceToBook', 'N/A')
+            eps = info.get('trailingEps', 'N/A')
+            div_yield = info.get('dividendYield', None)
+            div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/A"
+            52_high = info.get('fiftyTwoWeekHigh', 'N/A')
+            52_low = info.get('fiftyTwoWeekLow', 'N/A')
+
+            f1, f2, f3, f4 = st.columns(4)
+            f1.metric("मार्केट कैप (Market Cap)", market_cap_str)
+            f2.metric("पीई रेश्यो (P/E Ratio)", f"{pe_ratio}" if pe_ratio == 'N/A' else f"{pe_ratio:.2f}")
+            f3.metric("पीबी रेश्यो (P/B Ratio)", f"{pb_ratio}" if pb_ratio == 'N/A' else f"{pb_ratio:.2f}")
+            f4.metric("ईपीएस (EPS)", f"{eps}" if eps == 'N/A' else f"₹{eps:.2f}")
+
+            f5, f6, f7 = st.columns(3)
+            f5.metric("डिविडेंड यील्ड", div_yield_str)
+            f6.metric("52 वीक हाई (High)", f"₹{52_high}" if 52_high == 'N/A' else f"₹{52_high:.2f}")
+            f7.metric("52 वीक लो (Low)", f"₹{52_low}" if 52_low == 'N/A' else f"₹{52_low:.2f}")
+
+        except Exception as fund_err:
+            st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
+
+        st.divider()
+
+        # 2. Advanced TradingView Chart with Indicators Support
+        st.markdown("### 📈 ट्रेडिंगव्यू लाइव चार्ट (TradingView Advanced Chart)")
+        
+        # Clean symbol format for TradingView widget (e.g. RELIANCE.NS -> NSE:RELIANCE or BSE:500325)
+        tv_symbol = selected_symbol.replace('.NS', ':NSE').replace('.BO', ':BSE')
+        if ':' not in tv_symbol:
+            tv_symbol = f"NSE:{tv_symbol}"
+
+        # Embedded TradingView Advanced Real-time Chart Widget HTML/JS
+        tradingview_html = f"""
+        <!-- TradingView Widget BEGIN -->
+        <div class="tradingview-widget-container" style="height:550px;width:100%">
+          <div id="tradingview_chart" style="height:100%;width:100%"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+          <script type="text/javascript">
+          new TradingView.widget(
+          {{
+            "width": "100%",
+            "height": 550,
+            "symbol": "{tv_symbol}",
+            "interval": "D",
+            "timezone": "Asia/Kolkata",
+            "theme": "dark",
+            "style": "1",
+            "locale": "in",
+            "toolbar_bg": "#f1f3f6",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "details": true,
+            "hotlist": true,
+            "calendar": true,
+            "studies": [
+              "RSI@tv-basicstudies",
+              "MACD@tv-basicstudies",
+              "Moving Average Exponential@tv-basicstudies"
+            ],
+            "container_id": "tradingview_chart"
+          }}
+          );
+          </script>
+        </div>
+        <!-- TradingView Widget END -->
+        """
+        st.components.v1.html(tradingview_html, height=570)
+
+        # ==============================================================================================
             
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
