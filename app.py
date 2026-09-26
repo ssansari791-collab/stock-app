@@ -52,54 +52,30 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# EXPANDED SMART SEARCH & MAPPING DATABASE
+# COMPREHENSIVE STOCK DICTIONARY (सजेशन और सर्च के लिए)
 # ==========================================
-
-stocks_database = {
-    "RELIANCE": "RELIANCE.NS",
-    "TCS": "TCS.NS",
-    "INFY": "INFY.NS",
-    "HDFC": "HDFCBANK.NS",
-    "HDFCBANK": "HDFCBANK.NS",
-    "ITC": "ITC.NS",
-    "SBIN": "SBIN.NS",
-    "TATAMOTORS": "TATAMOTORS.NS",
-    "ZOMATO": "ZOMATO.NS",
-    "HFCL": "HFCL.NS",
-    "SUZLON": "SUZLON.NS",
-    "MARINE": "MARINE.NS",
-    "JUPITER": "JUPITERWAG.NS",
-    "JUPITERWAG": "JUPITERWAG.NS",
-    "JUPITOR": "JUPITERWAG.NS",
-    "INDIA NIPPON": "INDNIPPON.NS",
-    "INDNIPPON": "INDNIPPON.NS",
-    "TATAPOWER": "TATAPOWER.NS",
-    "ADANIENT": "ADANIENT.NS",
-    "TRENT": "TRENT.NS",
-    "DIXON": "DIXON.NS",
-    "POLYCAB": "POLYCAB.NS",
-    "KAYNES": "KAYNES.NS",
-    "MUTHOOTFIN": "MUTHOOTFIN.NS"
+stocks_dict = {
+    "Reliance Industries (RELIANCE.NS)": "RELIANCE.NS",
+    "Tata Consultancy Services (TCS.NS)": "TCS.NS",
+    "Infosys Limited (INFY.NS)": "INFY.NS",
+    "HDFC Bank (HDFCBANK.NS)": "HDFCBANK.NS",
+    "ITC Limited (ITC.NS)": "ITC.NS",
+    "State Bank of India (SBIN.NS)": "SBIN.NS",
+    "Tata Motors (TATAMOTORS.NS)": "TATAMOTORS.NS",
+    "Zomato Limited (ZOMATO.NS)": "ZOMATO.NS",
+    "HFCL Limited (HFCL.NS)": "HFCL.NS",
+    "Suzlon Energy (SUZLON.NS)": "SUZLON.NS",
+    "Marine Electricals (MARINE.NS)": "MARINE.NS",
+    "Jupiter Wagons (JUPITERWAG.NS)": "JUPITERWAG.NS",
+    "Bodal Chemicals (BODALCHEM.NS)": "BODALCHEM.NS",
+    "India Nippon Electricals (INDNIPPON.NS)": "INDNIPPON.NS",
+    "Tata Power (TATAPOWER.NS)": "TATAPOWER.NS",
+    "Adani Enterprises (ADANIENT.NS)": "ADANIENT.NS",
+    "Trent Limited (TRENT.NS)": "TRENT.NS",
+    "Dixon Technologies (DIXON.NS)": "DIXON.NS",
+    "Polycab India (POLYCAB.NS)": "POLYCAB.NS",
+    "Kaynes Technology (KAYNES.NS)": "KAYNES.NS"
 }
-
-def resolve_ticker(user_input):
-    clean_query = user_input.upper().strip()
-    if not clean_query:
-        return "RELIANCE.NS"
-    
-    if clean_query in stocks_database:
-        return stocks_database[clean_query]
-        
-    for key, val in stocks_database.items():
-        if clean_query in key or key in clean_query:
-            return val
-            
-    if ".NS" in clean_query or ".BO" in clean_query:
-        return clean_query
-        
-    # बिना स्पेस के टिकर बनाने के लिए
-    formatted = clean_query.replace(" ", "")
-    return f"{formatted}.NS"
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -148,7 +124,7 @@ def render_tradingview_chart(symbol):
         "locale": "in",
         "toolbar_bg": "#1e293b",
         "enable_publishing": false,
-        "allow_symbol_change": false,
+        "allow_symbol_change": true,  /* अब यूजर ट्रेडिंगव्यू के अंदर से भी कोई भी शेयर खुद सर्च कर सकेगा */
         "details": false,
         "hotlist": false,
         "calendar": false,
@@ -170,7 +146,7 @@ def get_smart_badge(metric_name, value):
     if metric_name == "P/E Ratio":
         if value < 15: return f"{value:.2f} (Attractive)", "badge-good"
         elif 15 <= value <= 30: return f"{value:.2f} (Fair)", "badge-warning"
-        else: return f"{value:.2f} (High P/E / Growth)", "badge-danger"
+        else: return f"{value:.2f} (High Growth / P/E)", "badge-danger"
     elif metric_name == "ROE":
         v = value * 100 if value < 1 else value
         if v > 15: return f"{v:.2f}% (Healthy)", "badge-good"
@@ -206,10 +182,14 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# ROBUST SEARCH BAR
+# SMART SEARCH SELECTBOX (सजेशन वाला सर्च बॉक्स)
 # ==========================================
-search_input = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Reliance, Tata, India Nippon, Jupiter):", value="RELIANCE")
-ticker_symbol = resolve_ticker(search_input)
+selected_stock_label = st.selectbox(
+    "🔍 शेयर सर्च करें या चुनें (Search / Select Stock):",
+    options=list(stocks_dict.keys()),
+    index=0
+)
+ticker_symbol = stocks_dict[selected_stock_label]
 
 st.markdown("---")
 
@@ -328,13 +308,8 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
     )
     
     if st.button("स्कैन रन करें", type="primary"):
-        with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है... थोड़ा इंतज़ार करें"):
-            # स्कैनर के लिए बड़ा यूनिवर्स (विस्तृत सूची)
-            universe = [
-                "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
-                "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", 
-                "JUPITERWAG.NS", "TRENT.NS", "DIXON.NS", "POLYCAB.NS", "KAYNES.NS", "ADANIENT.NS"
-            ]
+        with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है..."):
+            universe = list(stocks_dict.values())
             res = []
             for s in universe:
                 try:
