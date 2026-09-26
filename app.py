@@ -145,10 +145,10 @@ st.markdown("---")
 
 col_s1, col_s2 = st.columns(2)
 with col_s1:
-    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "SBIN.NS", "MARINE.NS"]
+    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "SBIN.NS", "MARINE.NS", "ADANIENT.NS", "ITC.NS"]
     selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
 with col_s2:
-    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS")
+    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS, ZOMATO.NS")
 
 ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticker
 
@@ -228,66 +228,64 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
         ]
     )
     
-    # Custom search bar inside scanner to search specific stock directly
-    scan_search = st.text_input("या विशेष स्टॉक सर्च करें (Search Stock in Scanner)", placeholder="e.g. TCS.NS, INFY.NS")
-
     if st.button("🚀 स्कैन शुरू करें (Run Scan)", type="primary"):
-        # Expanded stock universe for reliable scanning results
+        # Comprehensive reliable NSE stock pool
         universe = [
             "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
             "TATAMOTORS.NS", "SBIN.NS", "ICICIBANK.NS", "BHARTIARTL.NS", 
-            "LICI.NS", "HINDUNILVR.NS", "LT.NS", "BAJFINANCE.NS", "SUNPHARMA.NS"
+            "HINDUNILVR.NS", "LT.NS", "BAJFINANCE.NS", "SUNPHARMA.NS", 
+            "AXISBANK.NS", "WIPRO.NS", "MARUTI.NS", "TITAN.NS", "POWERGRID.NS"
         ]
-        
-        if scan_search:
-            universe = [scan_search.upper().strip()]
 
-        with st.spinner("बाजार से डेटा स्कैन किया जा रहा है... कृपया प्रतीक्षा करें"):
+        with st.spinner("बाजार से लाइव डेटा स्कैन किया जा रहा है..."):
             res = []
             for s in universe:
                 try:
-                    inf = yf.Ticker(s).info
+                    tk = yf.Ticker(s)
+                    inf = tk.info
                     name = inf.get('longName', s)
                     price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
                     h52 = inf.get('fiftyTwoWeekHigh', 0)
-                    pe = inf.get('trailingPE', 30)
+                    pe = inf.get('trailingPE', None)
                     roe = inf.get('returnOnEquity', 0)
-                    if roe and roe < 1: roe = roe * 100
-                    de = inf.get('debtToEquity', 1)
-                    if de is None: de = 0
+                    if roe and roe < 1: 
+                        roe = roe * 100
+                    de = inf.get('debtToEquity', 0)
+                    if de is None: 
+                        de = 0
 
                     match = False
                     if strategy == "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)":
-                        if h52 and price and (price >= 0.85 * h52):
+                        if h52 and price and (price >= 0.80 * h52):
                             match = True
                     elif strategy == "कम कर्ज वाली कंपनियां (Low Debt Companies)":
-                        if de < 0.8:
+                        if de < 1.0:
                             match = True
                     elif strategy == "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)":
-                        if pe and pe < 25 and roe and roe > 10:
+                        if pe and pe < 30 and roe and roe > 8:
                             match = True
                     elif strategy == "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)":
-                        if roe and roe > 15:
+                        if roe and roe > 12:
                             match = True
 
                     if match:
                         res.append({
                             "टिकर (Symbol)": s,
-                            "कंपनी का नाम (Company)": name,
-                            "भाव (Price)": price,
+                            "कंपनी (Company)": name,
+                            "भाव (₹)": price,
                             "P/E": round(pe, 2) if pe else 'N/A',
                             "ROE (%)": round(roe, 2) if roe else 'N/A',
                             "कर्ज (Debt/Eq)": round(de, 2) if de is not None else 'N/A',
-                            "52W हाई": h52
+                            "52W हाई (₹)": h52
                         })
                 except Exception:
                     continue
 
             if res:
-                st.success(f"कुल {len(res)} शेयर इस शर्त को पूरा करते हैं!")
+                st.success(f"सफलतापूर्वक {len(res)} शेयर मिले जो इस शर्त को पूरा करते हैं!")
                 st.dataframe(pd.DataFrame(res), use_container_width=True)
             else:
-                st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले। कृपया दूसरा फिल्टर या स्टॉक आज़माएं।")
+                st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले। कृपया दूसरा फिल्टर चुनें।")
 
 # ==========================================
 # DISCLAIMER FOOTER
@@ -297,3 +295,4 @@ st.markdown("""
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
+
