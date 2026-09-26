@@ -1,22 +1,28 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import requests
 import streamlit.components.v1 as components
 
-# Page configuration
+# 1. Page Configuration
 st.set_page_config(
-    page_title="TickStock - शेयर बाज़ार विश्लेषण",
+    page_title="TickStock",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling
+# 2. CSS to Hide Top Bar (Fork/GitHub/Menu) & Custom Styling
 st.markdown("""
 <style>
-    .main {
+    /* Hide Streamlit Top Menu, Fork, GitHub, and Footer */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stAppHeader {display: none;}
+    
+    /* Dark Theme Custom Adjustments */
+    .stApp {
         background-color: #0e1117;
     }
     .metric-card {
@@ -24,17 +30,12 @@ st.markdown("""
         border-radius: 10px;
         padding: 15px;
         border: 1px solid #2a2e39;
-        margin-bottom: 10px;
-    }
-    .stSelectbox label, .stTextInput label, .stRadio label {
-        color: #d1d4dc !important;
-        font-weight: 600;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Robust Indian Stock Symbol Resolver (Mapping + Fallback)
+# Symbol Resolution Mapping (No Cache Crash)
 # ---------------------------------------------------------
 POPULAR_SYMBOL_MAP = {
     "HIMADRI": "HSCL",
@@ -57,11 +58,10 @@ POPULAR_SYMBOL_MAP = {
     "SUZLON": "SUZLON"
 }
 
-@st.cache_data(ttl=86400)
 def search_symbol(query):
     query_clean = query.strip().upper()
     
-    # 1. Direct/Partial Match in Dictionary
+    # 1. Direct Map
     if query_clean in POPULAR_SYMBOL_MAP:
         base_symbol = POPULAR_SYMBOL_MAP[query_clean]
         return f"{base_symbol}.NS", base_symbol
@@ -70,7 +70,7 @@ def search_symbol(query):
         if key in query_clean:
             return f"{val}.NS", val
 
-    # 2. Yahoo Finance Search API Fallback
+    # 2. Yahoo Finance Search Fallback
     try:
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query_clean}&quotesCount=5"
         headers = {'User-Agent': 'Mozilla/5.0'}
@@ -81,63 +81,64 @@ def search_symbol(query):
             for q in quotes:
                 symbol = q.get('symbol', '')
                 if symbol.endswith('.NS') or symbol.endswith('.BO'):
-                    tradingview_sym = symbol.replace('.NS', '').replace('.BO', '')
-                    return symbol, tradingview_sym
+                    tv_sym = symbol.replace('.NS', '').replace('.BO', '')
+                    return symbol, tv_sym
     except Exception:
         pass
 
-    # 3. Default formatting
     clean_sym = query_clean.replace('.NS', '').replace('.BO', '')
     return f"{clean_sym}.NS", clean_sym
 
-# Helper function to fetch stock data safely
+# Safe Data Fetcher (Only returning primitive types/DataFrames to avoid cache errors)
 @st.cache_data(ttl=300)
 def fetch_stock_data(yf_symbol):
     try:
         ticker = yf.Ticker(yf_symbol)
-        info = ticker.info
         history = ticker.history(period="1y")
+        
         if history.empty:
             alt_symbol = yf_symbol.replace('.NS', '.BO')
             ticker = yf.Ticker(alt_symbol)
             history = ticker.history(period="1y")
-            info = ticker.info
             if not history.empty:
                 yf_symbol = alt_symbol
 
-        return ticker, info, history, yf_symbol
+        # Extract info dictionary cleanly
+        info = ticker.info if hasattr(ticker, 'info') else {}
+        return info, history, yf_symbol
     except Exception:
-        return None, {}, pd.DataFrame(), yf_symbol
+        return {}, pd.DataFrame(), yf_symbol
 
 # ---------------------------------------------------------
-# Sidebar & Navigation
+# Sidebar UI Setup
 # ---------------------------------------------------------
-st.title("📈 TickStock - शेयर बाज़ार विश्लेषण")
+with st.sidebar:
+    st.title("TickStock")
+    
+    user_input = st.text_input(
+        "🔎 शेयर का नाम या टिकर लिखें (उदा. Himadri, Reliance, TCS, Zomato):",
+        value="Himadri"
+    )
+    
+    yf_symbol, tv_symbol = search_symbol(user_input)
+    
+    st.markdown("---")
+    st.write("📌 **मेन्यू चुनें (Navigation)**")
+    nav_option = st.radio(
+        "NavOptions",
+        options=[
+            "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)",
+            "📊 फंडामेंटल हेल्थ (Fundamental Health)",
+            "🔍 स्मार्ट स्कैनर (Smart Scanners)"
+        ],
+        label_visibility="collapsed"
+    )
 
-st.markdown("### 🔍 शेयर का नाम या टिकर लिखें")
-user_input = st.text_input(
-    "उदाहरण: Himadri, Reliance, TCS, Texmaco, Zomato",
-    value="Himadri",
-    key="stock_search_input"
-)
-
-yf_symbol, tv_symbol = search_symbol(user_input)
-
-st.markdown("### 📌 मेनू चुनें (Navigation)")
-nav_option = st.radio(
-    "Navigation Options",
-    options=[
-        "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)",
-        "📊 फंडामेंटल हेल्थ (Fundamental Health)",
-        "🔍 स्मार्ट स्कैनर (Smart Scanners)"
-    ],
-    label_visibility="collapsed"
-)
-
-ticker_obj, stock_info, hist_df, resolved_yf_symbol = fetch_stock_data(yf_symbol)
+# Fetch Stock Info & Historical Data
+stock_info, hist_df, resolved_yf_symbol = fetch_stock_data(yf_symbol)
 
 # ---------------------------------------------------------
-# PAGE 1: LIVE CHART & TECHNICALS
+# Main Panel Display
 # ---------------------------------------------------------
 if "लाइव चार्ट और टेक्निकल" in nav_option:
     st.subheader(f"📊 {tv_symbol} - बाज़ार सारांश")
@@ -150,15 +151,12 @@ if "लाइव चार्ट और टेक्निकल" in nav_option:
         price_change = curr_price - prev_close
         pct_change = (price_change / prev_close) * 100
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("ताज़ा भाव (Close)", f"₹{curr_price:.2f}", f"{price_change:+.2f} ({pct_change:+.2f}%)")
-        with col2:
-            st.metric("आज का हाई (High)", f"₹{day_high:.2f}")
-        with col3:
-            st.metric("आज का लो (Low)", f"₹{day_low:.2f}")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("ताज़ा भाव (Close)", f"₹{curr_price:.2f}", f"{price_change:+.2f} ({pct_change:+.2f}%)")
+        c2.metric("आज का हाई (High)", f"₹{day_high:.2f}")
+        c3.metric("आज का लो (Low)", f"₹{day_low:.2f}")
 
-        # Support & Resistance (Pivot Levels)
+        # Pivot Calculation (Support & Resistance)
         pivot = (day_high + day_low + curr_price) / 3
         r1 = (2 * pivot) - day_low
         s1 = (2 * pivot) - day_high
@@ -174,7 +172,7 @@ if "लाइव चार्ट और टेक्निकल" in nav_option:
         sc4.metric("सपोर्ट 2 (S2)", f"₹{s2:.2f}")
 
     else:
-        st.warning(f"⚠️ {user_input} का डेटा प्राप्त नहीं हो सका। कृपया सही नाम दर्ज करें।")
+        st.warning(f"⚠️ '{user_input}' के लिए कोई डेटा नहीं मिला। सही टिकर दर्ज करें।")
 
     st.markdown("---")
     st.subheader(f"📉 ट्रेडिंगव्यू रियल-टाइम चार्ट (NSE:{tv_symbol})")
@@ -206,13 +204,10 @@ if "लाइव चार्ट और टेक्निकल" in nav_option:
     """
     components.html(tv_widget_html, height=620)
 
-# ---------------------------------------------------------
-# PAGE 2: FUNDAMENTAL HEALTH
-# ---------------------------------------------------------
 elif "फंडामेंटल हेल्थ" in nav_option:
-    st.subheader(f"📑 {tv_symbol} - फंडामेंटल और वित्तीय हेल्थ")
+    st.subheader(f"📑 {tv_symbol} - फंडामेंटल हेल्थ")
 
-    if stock_info and len(stock_info) > 5:
+    if stock_info:
         col1, col2, col3, col4 = st.columns(4)
         
         pe_ratio = stock_info.get('trailingPE', 'N/A')
@@ -234,7 +229,7 @@ elif "फंडामेंटल हेल्थ" in nav_option:
         ratios_data = {
             "मेट्रिक (Metric)": ["डेब्ट टू इक्विटी (Debt/Equity)", "डिविडेंड यील्ड (Dividend Yield)", "प्रॉफिट मार्जिन (Profit Margin)", "52-हफ़्ते का हाई", "52-हफ़्ते का लो"],
             "मान (Value)": [
-                f"{debt_to_equity}" if debt_to_equity != 'N/A' else "कम / नगण्य",
+                f"{debt_to_equity}" if debt_to_equity != 'N/A' else "N/A",
                 f"{(stock_info.get('dividendYield', 0) or 0)*100:.2f}%",
                 f"{(stock_info.get('profitMargins', 0) or 0)*100:.2f}%",
                 f"₹{stock_info.get('fiftyTwoWeekHigh', 'N/A')}",
@@ -242,15 +237,9 @@ elif "फंडामेंटल हेल्थ" in nav_option:
             ]
         }
         st.table(pd.DataFrame(ratios_data))
-
-        st.markdown("### 🏢 कंपनी परिचय")
-        st.write(stock_info.get('longBusinessSummary', 'कंपनी की जानकारी उपलब्ध नहीं है।'))
     else:
-        st.error(f"❌ {tv_symbol} के फंडामेंटल डेटा लोड नहीं हो पाए।")
+        st.error(f"❌ {tv_symbol} का फंडामेंटल डेटा लोड नहीं हो सका।")
 
-# ---------------------------------------------------------
-# PAGE 3: SMART SCANNERS
-# ---------------------------------------------------------
 elif "स्मार्ट स्कैनर" in nav_option:
     st.subheader("🔍 प्रो स्टॉक स्कैनर और स्क्रीनर्स")
 
@@ -273,9 +262,7 @@ elif "स्मार्ट स्कैनर" in nav_option:
     with st.spinner("स्कैनिंग जारी है..."):
         for sym in WATCHLIST:
             try:
-                t = yf.Ticker(sym)
-                inf = t.info
-                hist = t.history(period="1y")
+                inf, hist, _ = fetch_stock_data(sym)
                 if hist.empty:
                     continue
 
@@ -329,8 +316,5 @@ elif "स्मार्ट स्कैनर" in nav_option:
     if scanner_results:
         st.dataframe(pd.DataFrame(scanner_results), use_container_width=True)
     else:
-        st.info("इस फ़िल्टर मानदंड के अनुसार वर्तमान में कोई शेयर मैच नहीं हुआ।")
-
-st.markdown("---")
-st.caption("⚠️ **अस्वीकरण:** यह ऐप केवल शैक्षणिक और अध्ययन उद्देश्यों के लिए है।")
+        st.info("इस फ़िल्टर के अनुसार कोई शेयर मैच नहीं हुआ।")
         
