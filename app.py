@@ -52,29 +52,29 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# COMPREHENSIVE STOCK DICTIONARY (सजेशन और सर्च के लिए)
+# STOCKS DICTIONARY (याहू और ट्रेडिंगव्यू मैपिंग के साथ)
 # ==========================================
 stocks_dict = {
-    "Reliance Industries (RELIANCE.NS)": "RELIANCE.NS",
-    "Tata Consultancy Services (TCS.NS)": "TCS.NS",
-    "Infosys Limited (INFY.NS)": "INFY.NS",
-    "HDFC Bank (HDFCBANK.NS)": "HDFCBANK.NS",
-    "ITC Limited (ITC.NS)": "ITC.NS",
-    "State Bank of India (SBIN.NS)": "SBIN.NS",
-    "Tata Motors (TATAMOTORS.NS)": "TATAMOTORS.NS",
-    "Zomato Limited (ZOMATO.NS)": "ZOMATO.NS",
-    "HFCL Limited (HFCL.NS)": "HFCL.NS",
-    "Suzlon Energy (SUZLON.NS)": "SUZLON.NS",
-    "Marine Electricals (MARINE.NS)": "MARINE.NS",
-    "Jupiter Wagons (JUPITERWAG.NS)": "JUPITERWAG.NS",
-    "Bodal Chemicals (BODALCHEM.NS)": "BODALCHEM.NS",
-    "India Nippon Electricals (INDNIPPON.NS)": "INDNIPPON.NS",
-    "Tata Power (TATAPOWER.NS)": "TATAPOWER.NS",
-    "Adani Enterprises (ADANIENT.NS)": "ADANIENT.NS",
-    "Trent Limited (TRENT.NS)": "TRENT.NS",
-    "Dixon Technologies (DIXON.NS)": "DIXON.NS",
-    "Polycab India (POLYCAB.NS)": "POLYCAB.NS",
-    "Kaynes Technology (KAYNES.NS)": "KAYNES.NS"
+    "Reliance Industries (RELIANCE.NS)": {"yf": "RELIANCE.NS", "tv": "NSE:RELIANCE"},
+    "Tata Consultancy Services (TCS.NS)": {"yf": "TCS.NS", "tv": "NSE:TCS"},
+    "Infosys Limited (INFY.NS)": {"yf": "INFY.NS", "tv": "NSE:INFY"},
+    "HDFC Bank (HDFCBANK.NS)": {"yf": "HDFCBANK.NS", "tv": "NSE:HDFCBANK"},
+    "ITC Limited (ITC.NS)": {"yf": "ITC.NS", "tv": "NSE:ITC"},
+    "State Bank of India (SBIN.NS)": {"yf": "SBIN.NS", "tv": "NSE:SBIN"},
+    "Tata Motors (TATAMOTORS.NS)": {"yf": "TATAMOTORS.NS", "tv": "NSE:TATAMOTORS"},
+    "Zomato Limited (ZOMATO.NS)": {"yf": "ZOMATO.NS", "tv": "NSE:ZOMATO"},
+    "HFCL Limited (HFCL.NS)": {"yf": "HFCL.NS", "tv": "NSE:HFCL"},
+    "Suzlon Energy (SUZLON.NS)": {"yf": "SUZLON.NS", "tv": "NSE:SUZLON"},
+    "Marine Electricals (MARINE.NS)": {"yf": "MARINE.NS", "tv": "NSE:MARINE"},
+    "Jupiter Wagons (JUPITERWAG.NS)": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITER"},
+    "Bodal Chemicals (BODALCHEM.NS)": {"yf": "BODALCHEM.NS", "tv": "NSE:BODALCHEM"},
+    "India Nippon Electricals (INDNIPPON.NS)": {"yf": "INDNIPPON.NS", "tv": "NSE:INDNIPPON"},
+    "Tata Power (TATAPOWER.NS)": {"yf": "TATAPOWER.NS", "tv": "NSE:TATAPOWER"},
+    "Adani Enterprises (ADANIENT.NS)": {"yf": "ADANIENT.NS", "tv": "NSE:ADANIENT"},
+    "Trent Limited (TRENT.NS)": {"yf": "TRENT.NS", "tv": "NSE:TRENT"},
+    "Dixon Technologies (DIXON.NS)": {"yf": "DIXON.NS", "tv": "NSE:DIXON"},
+    "Polycab India (POLYCAB.NS)": {"yf": "POLYCAB.NS", "tv": "NSE:POLYCAB"},
+    "Kaynes Technology (KAYNES.NS)": {"yf": "KAYNES.NS", "tv": "NSE:KAYNES"}
 }
 
 @st.cache_data(ttl=3600)
@@ -103,10 +103,7 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
-def render_tradingview_chart(symbol):
-    clean_sym = symbol.replace(".NS", "").replace(".BO", "").upper()
-    tv_symbol = f"NSE:{clean_sym}"
-    
+def render_tradingview_chart(tv_symbol):
     widget_html = f"""
     <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
@@ -124,7 +121,7 @@ def render_tradingview_chart(symbol):
         "locale": "in",
         "toolbar_bg": "#1e293b",
         "enable_publishing": false,
-        "allow_symbol_change": true,  /* अब यूजर ट्रेडिंगव्यू के अंदर से भी कोई भी शेयर खुद सर्च कर सकेगा */
+        "allow_symbol_change": true,
         "details": false,
         "hotlist": false,
         "calendar": false,
@@ -182,14 +179,16 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# SMART SEARCH SELECTBOX (सजेशन वाला सर्च बॉक्स)
+# SELECTBOX SEARCH BAR (सुझाव और सर्च वाला परफेक्ट सिस्टम)
 # ==========================================
 selected_stock_label = st.selectbox(
     "🔍 शेयर सर्च करें या चुनें (Search / Select Stock):",
     options=list(stocks_dict.keys()),
     index=0
 )
-ticker_symbol = stocks_dict[selected_stock_label]
+
+ticker_symbol = stocks_dict[selected_stock_label]["yf"]
+tv_ticker = stocks_dict[selected_stock_label]["tv"]
 
 st.markdown("---")
 
@@ -259,7 +258,7 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
 
     st.markdown("---")
     st.markdown(f"### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट ({ticker_symbol})")
-    render_tradingview_chart(ticker_symbol)
+    render_tradingview_chart(tv_ticker)
 
 elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
     st.subheader(f"📑 फंडामेंटल एनालिसिस: {info.get('longName', ticker_symbol)}")
@@ -309,9 +308,9 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
     
     if st.button("स्कैन रन करें", type="primary"):
         with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है..."):
-            universe = list(stocks_dict.values())
+            universe_yf = [v["yf"] for v in stocks_dict.values()]
             res = []
-            for s in universe:
+            for s in universe_yf:
                 try:
                     inf = yf.Ticker(s).info
                     price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
