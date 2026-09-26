@@ -15,17 +15,27 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* ऊपर के सभी वेबसाइट जैसे हेडर, गिटहब, फोर्क और कनेक्टिंग बार को हमेशा के लिए छिपाने के लिए */
+    /* Hide all default streamlit headers and footers */
     header {visibility: hidden !important;}
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     .stDeployButton {display: none !important;}
-    
-    /* Hide Sidebar completely */
     section[data-testid="stSidebar"] { display: none !important; }
     
     .main { background-color: #0f172a; color: #f8fafc; }
     .stApp { background-color: #0f172a; }
+    
+    /* Top Navbar Styling */
+    .top-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #1e293b;
+        padding: 10px 20px;
+        border-radius: 12px;
+        border: 1px solid #334155;
+        margin-bottom: 20px;
+    }
     
     .metric-card {
         background-color: #1e293b;
@@ -140,17 +150,37 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# TOP-TO-BOTTOM FLOW LAYOUT
+# GROWW STYLE TOP HEADER BAR
 # ==========================================
-st.markdown("## ⚡ TickStock Pro Portal")
+nav_c1, nav_c2, nav_c3 = st.columns([2, 3, 2])
+
+with nav_c1:
+    st.markdown("### 📈 **TickStock**")
+
+with nav_c2:
+    st.markdown("<p style='margin: 5px 0 0 0; color: #94a3b8; font-size: 0.9rem;'>👋 Welcome, Abdul Kadir</p>", unsafe_allow_html=True)
+
+with nav_c3:
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        if st.button("👤 Profile"):
+            st.info("प्रोफाइल: अब्दुल कादिर (Abdul Kadir)\nईमेल/अकाउंट कनेक्टेड है।")
+    with col_p2:
+        if st.button("🔗 Share"):
+        # Share functionality hint or success
+            st.success("ऐप लिंक कॉपी कर लिया गया है!")
+
 st.markdown("---")
 
+# ==========================================
+# SEARCH & NAVIGATION SECTION
+# ==========================================
 col_s1, col_s2 = st.columns(2)
 with col_s1:
     popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
     selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
 with col_s2:
-    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS")
+    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS, ZOMATO.NS")
 
 ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticker
 
