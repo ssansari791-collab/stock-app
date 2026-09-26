@@ -103,7 +103,7 @@ try:
         # Display Metrics
         st.subheader(f"📊 {selected_symbol} - बाजार सारांश")
         m1, m2, m3, m4 = st.columns(4)
-m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
+        m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
         m2.metric("आज का हाई (High)", f"₹{high_price:.2f}")
         m3.metric("आज का लो (Low)", f"₹{low_price:.2f}")
         m4.metric("वॉल्यूम (Volume)", f"{volume:,}")
@@ -144,7 +144,7 @@ m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_p
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल और ट्रेडिंगव्यू चार्ट जोड़े गए हैं ====================
+        # ==================== फंडामेंटल और ट्रेडिंगव्यू चार्ट (नया जोड़ा गया) ====================
         
         st.divider()
 
@@ -164,8 +164,6 @@ m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_p
             eps = info.get('trailingEps', 'N/A')
             div_yield = info.get('dividendYield', None)
             div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/A"
-            
-            # वेरिएबल के नाम ठीक किए गए हैं (नंबर से शुरू नहीं हो सकते)
             high_52 = info.get('fiftyTwoWeekHigh', 'N/A')
             low_52 = info.get('fiftyTwoWeekLow', 'N/A')
 
