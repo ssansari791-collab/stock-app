@@ -144,7 +144,7 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल और ट्रेडिंगव्यू चार्ट (नया जोड़ा गया) ====================
+        # ==================== फंडामेंटल और ठीक किया गया ट्रेडिंगव्यू चार्ट ====================
         
         st.divider()
 
@@ -183,12 +183,17 @@ try:
 
         st.divider()
 
-        # 2. Advanced TradingView Chart
+        # 2. Advanced TradingView Chart (Fixed Symbol Format for TradingView)
         st.markdown("### 📈 ट्रेडिंगव्यू लाइव चार्ट (TradingView Advanced Chart)")
         
-        tv_symbol = selected_symbol.replace('.NS', ':NSE').replace('.BO', ':BSE')
-        if ':' not in tv_symbol:
-            tv_symbol = f"NSE:{tv_symbol}"
+        # सिंबल को ट्रेडिंगव्यू के फॉर्मेट (जैसे NSE:RELIANCE) में बदला गया है
+        raw_sym = selected_symbol.split('.')[0]
+        if ".NS" in selected_symbol:
+            tv_symbol = f"NSE:{raw_sym}"
+        elif ".BO" in selected_symbol:
+            tv_symbol = f"BSE:{raw_sym}"
+        else:
+            tv_symbol = f"NSE:{raw_sym}"
 
         tradingview_html = f"""
         <!-- TradingView Widget BEGIN -->
