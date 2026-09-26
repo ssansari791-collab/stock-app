@@ -3,6 +3,9 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 st.set_page_config(page_title="TickStox", layout="wide")
 
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
@@ -142,11 +145,10 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल और रिलायबल प्राइस चार्ट ====================
+        # ==================== फंडामेंटल डेटा ====================
         
         st.divider()
 
-        # 1. Fundamental Data Section
         st.markdown("### 🏢 फंडामेंटल डेटा (Fundamentals)")
         try:
             info = stock.info
@@ -181,9 +183,59 @@ try:
 
         st.divider()
 
-        # 2. Interactive Price Chart (Guaranteed to work for every Indian stock)
-        st.markdown(f"### 📈 {selected_symbol} - मूल्य चार्ट (6 महीने)")
-        st.line_chart(df['Close'])
+        # ==================== प्रोफेशनल कैंडलस्टिक चार्ट (इंडिकेटर के साथ) ====================
+        
+        st.markdown(f"### 📈 {selected_symbol} - प्रो कैंडलस्टिक चार्ट (Candlestick & Indicator)")
+        
+        try:
+            # 20 Period Simple Moving Average (SMA) जोड़ रहे हैं
+            df['SMA20'] = df['Close'].rolling(window=20).mean()
+
+            # सबप्लॉट: ऊपर कैंडलस्टिक चार्ट, नीचे वॉल्यूम बार चार्ट
+            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                                vertical_spacing=0.03, row_heights=[0.7, 0.3])
+
+            # 1. Candlestick Trace
+            fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name='Candles',
+                increasing_line_color='#26a69a', 
+                decreasing_line_color='#ef5350'
+            ), row=1, col=1)
+
+            # 2. Moving Average Trace (SMA 20)
+            fig.add_trace(go.Scatter(
+                x=df.index, y=df['SMA20'], 
+                line=dict(color='#ff9800', width=1.5), 
+                name='SMA 20'
+            ), row=1, col=1)
+
+            # 3. Volume Bar Trace
+            colors = ['#26a69a' if row['Close'] >= row['Open'] else '#ef5350' for index, row in df.iterrows()]
+            fig.add_trace(go.Bar(
+                x=df.index, y=df['Volume'], 
+                marker_color=colors, 
+                name='Volume'
+            ), row=2, col=1)
+
+            # Layout Styling (Dark Theme match)
+            fig.update_layout(
+                template='plotly_dark',
+                height=550,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis_rangeslider_visible=False,
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
             
+        except Exception as chart_err:
+            st.line_chart(df['Close'])
+
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
