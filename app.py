@@ -33,26 +33,40 @@ def fetch_stock_suggestions(query):
     except:
         return []
 
-# ==================== नया फीचर: स्टॉक कैटेगरी / थीम्स (Stock Categories Screener) ====================
-st.sidebar.markdown("### 🔍 स्टॉक श्रेणियां (Smart Screeners)")
-category_choice = st.sidebar.selectbox(
-    "लोकप्रिय श्रेणियां चुनें:", 
-    ["--- मैन्युअल सर्च करें ---", "🚀 हाई ग्रोथ / मोमेंटम (High Growth)", "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)", "💰 उच्च लाभांश वाले (High Dividend Yield)"]
-)
+# ==================== मुख्य स्क्रीन पर स्मार्ट स्टॉक श्रेणियां (Smart Screeners on Main Screen) ====================
+st.markdown("### 🔍 स्टॉक श्रेणियां और सर्च (Smart Categories)")
+col_cat1, col_cat2 = st.columns(2)
 
-# प्री-डिफ़ाइंड लोकप्रिय भारतीय शेयरों की सूचियाँ (श्रेणियों के अनुसार)
+with col_cat1:
+    category_choice = st.selectbox(
+        "लोकप्रिय श्रेणियां चुनें:", 
+        ["--- मैन्युअल सर्च करें ---", "🚀 हाई ग्रोथ / मोमेंटम (High Growth)", "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)", "💰 उच्च लाभांश वाले (High Dividend Yield)"]
+    )
+
+# व्यापक और बड़ी सूची (Expanded Stock Categories)
 screener_stocks = {
-    "🚀 हाई ग्रोथ / मोमेंटम (High Growth)": ["ZOMATO.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "HAL.NS", "COCHINSHIP.NS"],
-    "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS"],
-    "💰 उच्च लाभांश वाले (High Dividend Yield)": ["COALINDIA.NS", "VEDL.NS", "ONGC.NS", "IOC.NS", "POWERGRID.NS", "NTPC.NS"]
+    "🚀 हाई ग्रोथ / मोमेंटम (High Growth)": [
+        "ZOMATO.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "HAL.NS", "COCHINSHIP.NS", 
+        "TITAN.NS", "POLYCAB.NS", "DIXON.NS", "TATACOMM.NS", "PERSISTENT.NS", "LODHA.NS"
+    ],
+    "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)": [
+        "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS", 
+        "ICICIBANK.NS", "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "BAJFINANCE.NS", "KOTAKBANK.NS"
+    ],
+    "💰 उच्च लाभांश वाले (High Dividend Yield)": [
+        "COALINDIA.NS", "VEDL.NS", "ONGC.NS", "IOC.NS", "POWERGRID.NS", "NTPC.NS", 
+        "BPCL.NS", "HINDPETRO.NS", "GAIL.NS", "ITC.NS", "HCLTECH.NS", "TCS.NS"
+    ]
 }
 
 default_query = "RELIANCE"
-if category_choice != "--- मैन्युअल सर्च करें ---":
-    # यदि यूजर ने कोई कैटेगरी चुनी है, तो उस लिस्ट से पहला स्टॉक डिफ़ॉल्ट ले लेंगे या सेलेक्टर दिखाएंगे
-    selected_category_list = screener_stocks[category_choice]
-    chosen_cat_stock = st.sidebar.selectbox("सूची से चुनें:", selected_category_list)
-    default_query = chosen_cat_stock.replace(".NS", "").replace(".BO", "")
+with col_cat2:
+    if category_choice != "--- मैन्युअल सर्च करें ---":
+        selected_category_list = screener_stocks[category_choice]
+        # सुंदर फॉर्मेट में नाम दिखाने के लिए मेपिंग
+        display_names = [s.replace(".NS", "") for s in selected_category_list]
+        chosen_cat_display = st.selectbox("सूची से चुनें:", display_names)
+        default_query = chosen_cat_display
 
 # User Input Search Box
 user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Aegis, Tata, Marine, Reliance):", default_query)
