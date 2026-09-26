@@ -52,16 +52,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# ROBUST TICKER RESOLVER WITH TRADINGVIEW MAPPING
+# ADVANCED MAPPING & SEARCH ENGINE
 # ==========================================
 def resolve_stock(user_input):
     clean = user_input.upper().strip()
     if not clean:
         return "RELIANCE.NS", "NSE:RELIANCE"
         
-    # विशेष टिकर मैपिंग ताकि याहू और ट्रेडिंगव्यू दोनों पर कभी एरर न आए
+    # प्रमुख शेयरों के लिए सटीक याहू और ट्रेडिंगव्यू मैपिंग
     mapping = {
-        "REFEX": {"yf": "REFEX.NS", "tv": "BSE:REFEX"}, # Refex एनएसई की बजाय बीएसई पर ज्यादा सक्रिय है
+        "HIMADRI": {"yf": "HIMATSEID.NS", "tv": "NSE:HIMATSEID"},
+        "HIMATSEID": {"yf": "HIMATSEID.NS", "tv": "NSE:HIMATSEID"},
         "RELIANCE": {"yf": "RELIANCE.NS", "tv": "NSE:RELIANCE"},
         "TCS": {"yf": "TCS.NS", "tv": "NSE:TCS"},
         "INFY": {"yf": "INFY.NS", "tv": "NSE:INFY"},
@@ -74,8 +75,7 @@ def resolve_stock(user_input):
         "HFCL": {"yf": "HFCL.NS", "tv": "NSE:HFCL"},
         "SUZLON": {"yf": "SUZLON.NS", "tv": "NSE:SUZLON"},
         "JUPITER": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
-        "JUPITERWAG": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
-        "RAMASTEEL": {"yf": "RAMASTEEL.NS", "tv": "NSE:RAMASTEEL"}
+        "REFEX": {"yf": "REFEX.NS", "tv": "BSE:REFEX"}
     }
     
     if clean in mapping:
@@ -118,18 +118,11 @@ def calculate_pivot_points(hist):
     }
 
 def render_tradingview_chart(tv_symbol):
-    # ट्रेडिंगव्यू एरर को पूरी तरह ब्लॉक करने वाला स्क्रिप्ट लॉजिक
     widget_html = f"""
     <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
-      // ट्रेडिंगव्यू के किसी भी पॉप-अप एरर को दबाने के लिए
-      window.addEventListener('error', function(e) {{
-          e.preventDefault();
-          return true;
-      }}, true);
-
       new TradingView.widget(
       {{
         "width": "100%",
@@ -200,9 +193,9 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# ADVANCED FREE-TEXT SEARCH BAR
+# SEARCH BAR
 # ==========================================
-search_query = st.text_input("🔍 कोई भी शेयर सर्च करें (उदा. REFEX, RELIANCE, TCS, ZOMATO):", value="RELIANCE")
+search_query = st.text_input("🔍 शेयर का नाम या टिकर लिखें (उदा. Himadri, Reliance, TCS, Zomato):", value="RELIANCE")
 ticker_symbol, tv_symbol = resolve_stock(search_query)
 
 st.markdown("---")
@@ -326,7 +319,7 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
             universe = [
                 "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
                 "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", 
-                "JUPITERWAG.NS", "REFEX.NS", "TATAPOWER.NS", "ADANIENT.NS"
+                "JUPITERWAG.NS", "HIMATSEID.NS", "REFEX.NS", "TATAPOWER.NS"
             ]
             res = []
             for s in universe:
