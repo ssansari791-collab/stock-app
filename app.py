@@ -5,7 +5,7 @@ import numpy as np
 import streamlit.components.v1 as components
 
 # ==========================================
-# PAGE CONFIGURATION & LAYOUT FIX
+# PAGE CONFIGURATION
 # ==========================================
 st.set_page_config(
     page_title="TickStock | Pro Stock Analysis",
@@ -13,16 +13,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS to completely hide Streamlit sidebar and force top-to-bottom layout
+# CSS to hide sidebar and style the clean top-to-bottom UI
 st.markdown("""
     <style>
-    /* Forcefully hide sidebar elements */
     [data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {
         display: none !important;
         width: 0px !important;
     }
     
-    /* Main app styling */
     .main { background-color: #0f172a; color: #f8fafc; }
     .stApp { background-color: #0f172a; }
     
@@ -84,10 +82,10 @@ def calculate_pivot_points(hist):
     }
 
 def render_tradingview_chart(symbol):
-    # Ensure proper Exchange prefix to prevent TradingView popup errors
     clean_sym = symbol.replace(".NS", "").upper()
     tv_symbol = f"NSE:{clean_sym}"
     
+    # Injected JavaScript to automatically hide any TradingView restriction popups/modals
     widget_html = f"""
     <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
@@ -116,6 +114,16 @@ def render_tradingview_chart(symbol):
         ],
         "container_id": "tradingview_chart"
       }});
+      
+      // Auto-hide TradingView notification popups
+      setInterval(function() {{
+          var dialogs = document.querySelectorAll('div[class*="dialog"], div[class*="notification"]');
+          dialogs.forEach(function(el) {{
+              if (el.innerText && el.innerText.includes("TradingView")) {{
+                  el.style.display = 'none';
+              }}
+          }});
+      }}, 300);
       </script>
     </div>
     """
@@ -140,12 +148,11 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# TOP-TO-BOTTOM FULL SCREEN LAYOUT
+# TOP-TO-BOTTOM LAYOUT
 # ==========================================
 st.markdown("## ⚡ TickStock Pro Portal")
 st.markdown("---")
 
-# Top Search Controls
 col_s1, col_s2 = st.columns(2)
 with col_s1:
     popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
@@ -157,7 +164,6 @@ ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticke
 
 st.markdown("---")
 
-# Navigation Menu at the Top
 app_mode = st.radio(
     "मेनु चुनें (Navigation)", 
     ["📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)", "📑 फंडामेंटल हेल्थ (Fundamental Health)", "🔍 स्मार्ट स्कैनर (Smart Scanners)"], 
@@ -244,10 +250,11 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
 # DISCLAIMER FOOTER
 # ==========================================
 st.markdown("""
-<div class="disclaimer-Box">
+<div class="disclaimer-box">
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
