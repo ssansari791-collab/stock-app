@@ -183,17 +183,15 @@ try:
 
         st.divider()
 
-        # 2. Advanced TradingView Chart (Fixed Symbol Format for TradingView)
+        # 2. Advanced TradingView Chart (Fixed Symbol to Prevent AAPL Default)
         st.markdown("### 📈 ट्रेडिंगव्यू लाइव चार्ट (TradingView Advanced Chart)")
         
-        # सिंबल को ट्रेडिंगव्यू के फॉर्मेट (जैसे NSE:RELIANCE) में बदला गया है
-        raw_sym = selected_symbol.split('.')[0]
-        if ".NS" in selected_symbol:
-            tv_symbol = f"NSE:{raw_sym}"
-        elif ".BO" in selected_symbol:
-            tv_symbol = f"BSE:{raw_sym}"
+        # सिंबल को पूरी तरह साफ़ करके सही एक्सचेंज फॉर्मेट (NSE:SYMBOL) में सेट किया गया है
+        clean_sym = selected_symbol.replace(".NS", "").replace(".BO", "").strip().upper()
+        if ".BO" in selected_symbol.upper() or "BSE" in selected_symbol.upper():
+            tv_symbol = f"BSE:{clean_sym}"
         else:
-            tv_symbol = f"NSE:{raw_sym}"
+            tv_symbol = f"NSE:{clean_sym}"
 
         tradingview_html = f"""
         <!-- TradingView Widget BEGIN -->
