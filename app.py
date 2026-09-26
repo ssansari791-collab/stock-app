@@ -22,7 +22,7 @@ st.markdown("""
     .stDeployButton {display: none !important;}
     section[data-testid="stSidebar"] { display: none !important; }
     
-    .main { background-color: #0f172a; color: #f8fafc; }
+    .main { background-color: #0f172a; color: #f8fafc; padding-top: 0px !important; }
     .stApp { background-color: #0f172a; }
     
     .metric-card {
@@ -138,14 +138,14 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# STRICT CORNER-TO-CORNER TOP BAR (SINGLE ROW)
+# EXACT CORNER-TO-CORNER TOP BAR (FLEXBOX)
 # ==========================================
-top_c1, top_c2 = st.columns([10, 1])
+top_col1, top_col2 = st.columns([10, 1])
 
-with top_c1:
+with top_col1:
     st.markdown("<h3 style='margin:0; padding:0; color:#38bdf8;'>🟢 TickStock</h3>", unsafe_allow_html=True)
 
-with top_c2:
+with top_col2:
     with st.popover("⚙️"):
         st.write("### यूजर प्रोफाइल")
         uploaded_file = st.file_uploader("फोटो लगाएं", type=["jpg", "png", "jpeg"])
