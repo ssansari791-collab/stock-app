@@ -3,8 +3,6 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
-import matplotlib.pyplot as plt
-
 st.set_page_config(page_title="TickStox", layout="wide")
 
 
@@ -147,9 +145,7 @@ try:
             st.write(r)
 
         # ==================== फंडामेंटल डेटा ====================
-        
         st.divider()
-
         st.markdown("### 🏢 फंडामेंटल डेटा (Fundamentals)")
         try:
             info = stock.info
@@ -182,44 +178,19 @@ try:
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
 
+        # ==================== मूल्य और वॉल्यूम चार्ट ====================
         st.divider()
-
-        # ==================== प्रोफेशनल टेक्निकल चार्ट (इंडिकेटर और वॉल्यूम के साथ) ====================
+        st.markdown(f"### 📈 {selected_symbol} - प्राइस और वॉल्यूम चार्ट")
         
-        st.markdown(f"### 📈 {selected_symbol} - तकनीकी चार्ट और इंडिकेटर (SMA 20 & Volume)")
+        # क्लोज प्राइस और मूविंग एवरेज का डेटा तैयार करना
+        chart_df = pd.DataFrame(index=df.index)
+        chart_df['Close Price'] = df['Close']
+        chart_df['SMA 20'] = df['Close'].rolling(window=20).mean()
         
-        try:
-            # 20 दिन का मूविंग एवरेज (SMA 20) कैलकुलेट कर रहे हैं
-            df['SMA20'] = df['Close'].rolling(window=20).mean()
-
-            # Matplotlib से प्रोफेशनल डार्क थीम वाला चार्ट बना रहे हैं
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+        st.line_chart(chart_df)
+        
+        st.markdown("#### 📊 वॉल्यूम (Volume)")
+        st.bar_chart(df['Volume'])
             
-            # ऐप के डार्क बैकग्राउंड से मैच करने के लिए रंग सेट करना
-            fig.patch.set_facecolor('#0e1117')
-            ax1.set_facecolor('#0e1117')
-            ax2.set_facecolor('#0e1117')
-
-            # 1. प्राइस और मूविंग एवरेज (SMA 20) लाइन
-            ax1.plot(df.index, df['Close'], label='Close Price', color='#26a69a', linewidth=2)
-            ax1.plot(df.index, df['SMA20'], label='SMA 20', color='#ff9800', linestyle='--', linewidth=1.5)
-            ax1.set_ylabel('Price (INR)', color='white', fontsize=10)
-            ax1.tick_params(colors='white')
-            ax1.grid(True, color='#333333', alpha=0.5)
-            ax1.legend(loc='upper left', facecolor='#1e1e1e', labelcolor='white')
-
-            # 2. वॉल्यूम बार चार्ट
-            colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(df['Close'], df['Open'])]
-            ax2.bar(df.index, df['Volume'], color=colors, alpha=0.8)
-            ax2.set_ylabel('Volume', color='white', fontsize=10)
-            ax2.tick_params(colors='white')
-            ax2.grid(True, color='#333333', alpha=0.5)
-
-            plt.tight_layout()
-            st.pyplot(fig)
-            
-        except Exception as chart_err:
-            st.line_chart(df['Close'])
-
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
