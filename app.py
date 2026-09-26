@@ -1,4 +1,3 @@
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -233,4 +232,5 @@ st.markdown("""
   <b>⚠️ Legal Notice:</b> TickStock is an educational and informational analytics portal. We are <b>not a SEBI-registered research analyst or investment advisor</b>. Consult a certified financial expert before investing.
 </div>
 """, unsafe_allow_html=True)
+
 
