@@ -52,8 +52,37 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS
+# HELPER FUNCTIONS & SMART TICKER MAPPER
 # ==========================================
+
+def format_ticker(query):
+    query = query.upper().strip()
+    # Common popular Indian stock shortcuts mapping
+    stock_map = {
+        "RELIANCE": "RELIANCE.NS",
+        "TCS": "TCS.NS",
+        "INFY": "INFY.NS",
+        "HDFC": "HDFCBANK.NS",
+        "HDFCBANK": "HDFCBANK.NS",
+        "ITC": "ITC.NS",
+        "SBIN": "SBIN.NS",
+        "TATAMOTORS": "TATAMOTORS.NS",
+        "ZOMATO": "ZOMATO.NS",
+        "HFCL": "HFCL.NS",
+        "SUZLON": "SUZLON.NS",
+        "TATAPOWER": "TATAPOWER.NS",
+        "ADANIENT": "ADANIENT.NS"
+    }
+    
+    if query in stock_map:
+        return stock_map[query]
+    
+    # If user already entered .NS or .BO, keep it
+    if ".NS" in query or ".BO" in query:
+        return query
+        
+    # Default fallback: append .NS for Indian stocks if no extension present
+    return f"{query}.NS"
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -82,7 +111,7 @@ def calculate_pivot_points(hist):
     }
 
 def render_tradingview_chart(symbol):
-    clean_sym = symbol.replace(".NS", "").upper()
+    clean_sym = symbol.replace(".NS", "").replace(".BO", "").upper()
     tv_symbol = f"NSE:{clean_sym}"
     
     widget_html = f"""
@@ -160,11 +189,10 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# FIXED SEARCH & NAVIGATION SECTION
+# SMART SEARCH & NAVIGATION SECTION
 # ==========================================
-# अब यहाँ सीधा सर्च बॉक्स है जिसमें आप कुछ भी टाइप कर सकते हैं
-search_input = st.text_input("🔍 शेयर सर्च करें (Search Stock Ticker)", value="RELIANCE.NS", placeholder="जैसे: RELIANCE.NS, TCS.NS, ZOMATO.NS")
-ticker_symbol = search_input.upper().strip() if search_input else "RELIANCE.NS"
+user_query = st.text_input("🔍 शेयर सर्च करें (Search Stock Ticker)", value="RELIANCE", placeholder="जैसे: RELIANCE, TCS, HFCL, ZOMATO")
+ticker_symbol = format_ticker(user_query)
 
 st.markdown("---")
 
