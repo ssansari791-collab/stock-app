@@ -44,7 +44,6 @@ def fetch_stock_suggestions(query):
             for q in quotes:
                 symbol = q.get('symbol', '')
                 short_name = q.get('shortname', q.get('longname', symbol))
-                # Prioritize Indian exchanges (.NS / .BO) or general symbols
                 if symbol.endswith('.NS') or symbol.endswith('.BO') or len(symbol) < 6:
                     stock_options.append({
                         'display': f"{short_name} ({symbol})",
@@ -54,15 +53,15 @@ def fetch_stock_suggestions(query):
     except Exception:
         return []
 
-@st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
+    """Fetch raw info and history without caching the complex Ticker object."""
     try:
         stock = yf.Ticker(ticker_symbol)
         info = stock.info
         hist = stock.history(period="6mo")
-        return stock, info, hist
+        return info, hist
     except Exception:
-        return None, {}, pd.DataFrame()
+        return {}, pd.DataFrame()
 
 def calculate_pivot_points(hist):
     if hist.empty or len(hist) < 2:
@@ -146,7 +145,7 @@ if len(user_query.strip()) >= 2:
         chosen_display = st.sidebar.selectbox("मिलते-जुले शेयर्स की सूची:", list(options_map.keys()))
         selected_ticker = options_map[chosen_display]
 
-stock_obj, info, hist_data = fetch_stock_data(selected_ticker)
+info, hist_data = fetch_stock_data(selected_ticker)
 
 # ==========================================
 # MAIN VIEWS
@@ -223,7 +222,7 @@ elif app_mode == "Stock Scanners":
         with st.spinner("स्कैनिंग जारी है..."):
             res = []
             for sym in sample_stocks:
-                _, inf, _ = fetch_stock_data(sym)
+                inf, _ = fetch_stock_data(sym)
                 price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
                 h52 = inf.get('fiftyTwoWeekHigh', 0)
                 pe = inf.get('trailingPE', 20)
