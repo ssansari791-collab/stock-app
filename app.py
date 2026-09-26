@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS to hide sidebar completely and maintain top-to-bottom flow
+# CSS to hide sidebar and style the clean top-to-bottom UI
 st.markdown("""
     <style>
     [data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {
@@ -145,7 +145,7 @@ st.markdown("---")
 
 col_s1, col_s2 = st.columns(2)
 with col_s1:
-    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
+    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "SBIN.NS", "MARINE.NS"]
     selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
 with col_s2:
     custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS")
@@ -183,7 +183,7 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         mcap = info.get('marketCap', 0)
         st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 ट्रेडिंगव्यू एडवांस्ड लाइव चार्ट (TradingView Advanced Chart)")
+    st.markdown("### 📊 ट्रेडिंगव्यू एडवांस्ड लाइव चार्ट")
     render_tradingview_chart(ticker_symbol)
     
     st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
@@ -216,25 +216,78 @@ elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental 
     st.markdown(f"<div class='metric-card'><b>डेट टू इक्विटी (कर्ज):</b> <span class='{de_badge}'>{de_val}</span></div>", unsafe_allow_html=True)
 
 elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
-    st.subheader("🔍 स्टॉक स्कैनर और फिल्टर")
-    strategy = st.selectbox("फिल्टर चुनें", ["ब्रेकआउट / 52-वीक हाई के करीब", "कम कर्ज वाली कंपनियां"])
+    st.subheader("🔍 प्रो स्टॉक स्कैनर और फिल्टर")
     
-    if st.button("स्कैन शुरू करें", type="primary"):
-        universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS"]
-        res = []
-        for s in universe:
-            try:
-                inf = yf.Ticker(s).info
-                price = inf.get('currentPrice', 0)
-                h52 = inf.get('fiftyTwoWeekHigh', 0)
-                if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price >= 0.90 * h52:
-                    res.append({"Symbol": s, "Name": inf.get('longName'), "Price": price, "52W High": h52})
-            except:
-                pass
-        if res:
-            st.dataframe(pd.DataFrame(res), use_container_width=True)
-        else:
-            st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले।")
+    strategy = st.selectbox(
+        "स्कैनिंग रणनीति चुनें (Select Strategy)", 
+        [
+            "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)", 
+            "कम कर्ज वाली कंपनियां (Low Debt Companies)", 
+            "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)",
+            "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)"
+        ]
+    )
+    
+    # Custom search bar inside scanner to search specific stock directly
+    scan_search = st.text_input("या विशेष स्टॉक सर्च करें (Search Stock in Scanner)", placeholder="e.g. TCS.NS, INFY.NS")
+
+    if st.button("🚀 स्कैन शुरू करें (Run Scan)", type="primary"):
+        # Expanded stock universe for reliable scanning results
+        universe = [
+            "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
+            "TATAMOTORS.NS", "SBIN.NS", "ICICIBANK.NS", "BHARTIARTL.NS", 
+            "LICI.NS", "HINDUNILVR.NS", "LT.NS", "BAJFINANCE.NS", "SUNPHARMA.NS"
+        ]
+        
+        if scan_search:
+            universe = [scan_search.upper().strip()]
+
+        with st.spinner("बाजार से डेटा स्कैन किया जा रहा है... कृपया प्रतीक्षा करें"):
+            res = []
+            for s in universe:
+                try:
+                    inf = yf.Ticker(s).info
+                    name = inf.get('longName', s)
+                    price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
+                    h52 = inf.get('fiftyTwoWeekHigh', 0)
+                    pe = inf.get('trailingPE', 30)
+                    roe = inf.get('returnOnEquity', 0)
+                    if roe and roe < 1: roe = roe * 100
+                    de = inf.get('debtToEquity', 1)
+                    if de is None: de = 0
+
+                    match = False
+                    if strategy == "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)":
+                        if h52 and price and (price >= 0.85 * h52):
+                            match = True
+                    elif strategy == "कम कर्ज वाली कंपनियां (Low Debt Companies)":
+                        if de < 0.8:
+                            match = True
+                    elif strategy == "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)":
+                        if pe and pe < 25 and roe and roe > 10:
+                            match = True
+                    elif strategy == "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)":
+                        if roe and roe > 15:
+                            match = True
+
+                    if match:
+                        res.append({
+                            "टिकर (Symbol)": s,
+                            "कंपनी का नाम (Company)": name,
+                            "भाव (Price)": price,
+                            "P/E": round(pe, 2) if pe else 'N/A',
+                            "ROE (%)": round(roe, 2) if roe else 'N/A',
+                            "कर्ज (Debt/Eq)": round(de, 2) if de is not None else 'N/A',
+                            "52W हाई": h52
+                        })
+                except Exception:
+                    continue
+
+            if res:
+                st.success(f"कुल {len(res)} शेयर इस शर्त को पूरा करते हैं!")
+                st.dataframe(pd.DataFrame(res), use_container_width=True)
+            else:
+                st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले। कृपया दूसरा फिल्टर या स्टॉक आज़माएं।")
 
 # ==========================================
 # DISCLAIMER FOOTER
@@ -244,11 +297,3 @@ st.markdown("""
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
