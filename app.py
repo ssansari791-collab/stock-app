@@ -18,11 +18,9 @@ st.set_page_config(
 # Custom High-End Styling for Professional App Look
 st.markdown("""
     <style>
-    /* Main Background & Font */
     .main { background-color: #0f172a; color: #f8fafc; }
     .stApp { background-color: #0f172a; }
     
-    /* Card Design */
     .metric-card {
         background-color: #1e293b;
         border: 1px solid #334155;
@@ -32,12 +30,10 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    /* Badges */
     .badge-good { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
     .badge-warning { background-color: #78350f; color: #fbbf24; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
     .badge-danger { background-color: #7f1d1d; color: #f87171; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
     
-    /* Disclaimer Box */
     .disclaimer-box {
         background-color: #1e293b;
         border-left: 4px solid #f59e0b;
@@ -48,13 +44,12 @@ st.markdown("""
         color: #94a3b8;
     }
     
-    /* Header Styling */
     h1, h2, h3 { color: #f8fafc !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS
+# HELPER FUNCTIONS (FIXED CACHING)
 # ==========================================
 
 @st.cache_data(ttl=3600)
@@ -63,9 +58,9 @@ def fetch_stock_data(ticker_symbol):
         stock = yf.Ticker(ticker_symbol)
         info = stock.info
         hist = stock.history(period="6mo")
-        return stock, info, hist
+        return info, hist
     except Exception as e:
-        return None, {}, pd.DataFrame()
+        return {}, pd.DataFrame()
 
 def calculate_pivot_points(hist):
     if hist.empty or len(hist) < 2:
@@ -80,11 +75,10 @@ def calculate_pivot_points(hist):
         "R2": round(pivot + (high - low), 2),
         "S2": round(pivot - (high - low), 2),
         "R3": round(high + 2 * (pivot - low), 2),
-        "S3": round(low - 2 * (pivot - high), 2),
+        "S3": round(low - 2 * (high - high), 2),
     }
 
 def render_tradingview_chart(symbol):
-    # Clean symbol for TradingView format (e.g., RELIANCE.NS -> NSE:RELIANCE)
     clean_sym = symbol.replace(".NS", "").upper()
     tv_symbol = f"NSE:{clean_sym}"
     
@@ -155,7 +149,7 @@ selected_ticker = st.sidebar.selectbox("Choose Popular Stock", popular_stocks)
 custom_input = st.sidebar.text_input("Or enter Ticker (e.g. AAPL, RELIANCE.NS)")
 ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticker
 
-stock_obj, info, hist_data = fetch_stock_data(ticker_symbol)
+info, hist_data = fetch_stock_data(ticker_symbol)
 
 # ==========================================
 # MAIN APP VIEWS
@@ -166,7 +160,6 @@ if app_mode == "📈 Live Chart & Technicals":
     comp_name = info.get('longName', ticker_symbol)
     curr_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
     
-    # Top Overview Cards
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(f"<div class='metric-card'><h4>Stock</h4><h3>{comp_name}</h3></div>", unsafe_allow_html=True)
