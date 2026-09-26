@@ -52,39 +52,40 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# DYNAMIC UNIVERSAL SEARCH ENGINE (कोई भी शेयर ढूंढने के लिए)
+# LARGE INDIAN STOCKS DICTIONARY (For Perfect Search & Charts)
 # ==========================================
-def get_stock_ticker(query):
-    q = query.upper().strip()
-    if not q:
-        return "RELIANCE.NS"
-        
-    # अगर यूजर ने सीधे .NS या .BO लिख दिया है
-    if ".NS" in q or ".BO" in q:
-        return q
-        
-    # सामान्य शॉर्टकट मैपिंग
-    common = {
-        "RELIANCE": "RELIANCE.NS", "TCS": "TCS.NS", "INFY": "INFY.NS",
-        "HDFC": "HDFCBANK.NS", "HDFCBANK": "HDFCBANK.NS", "ITC": "ITC.NS",
-        "SBIN": "SBIN.NS", "TATAMOTORS": "TATAMOTORS.NS", "ZOMATO": "ZOMATO.NS",
-        "HFCL": "HFCL.NS", "SUZLON": "SUZLON.NS", "MARINE": "MARINE.NS",
-        "JUPITER": "JUPITERWAG.NS", "RAMASTEEL": "RAMASTEEL.NS", "REFEX": "REFEX.NS"
-    }
-    if q in common:
-        return common[q]
-        
-    # ऑटो-फाइंडिंग: यदि कोई नया नाम है तो Yahoo Finance से ढूंढने की कोशिश करेगा
-    try:
-        search_query = f"{q}.NS"
-        test_ticker = yf.Ticker(search_query)
-        hist = test_ticker.history(period="5d")
-        if not hist.empty:
-            return search_query
-    except:
-        pass
-        
-    return f"{q.replace(' ', '')}.NS"
+stocks_dict = {
+    "Reliance Industries (RELIANCE.NS)": {"yf": "RELIANCE.NS", "tv": "NSE:RELIANCE"},
+    "Tata Consultancy Services (TCS.NS)": {"yf": "TCS.NS", "tv": "NSE:TCS"},
+    "Infosys Limited (INFY.NS)": {"yf": "INFY.NS", "tv": "NSE:INFY"},
+    "HDFC Bank (HDFCBANK.NS)": {"yf": "HDFCBANK.NS", "tv": "NSE:HDFCBANK"},
+    "ITC Limited (ITC.NS)": {"yf": "ITC.NS", "tv": "NSE:ITC"},
+    "State Bank of India (SBIN.NS)": {"yf": "SBIN.NS", "tv": "NSE:SBIN"},
+    "Tata Motors (TATAMOTORS.NS)": {"yf": "TATAMOTORS.NS", "tv": "NSE:TATAMOTORS"},
+    "Zomato Limited (ZOMATO.NS)": {"yf": "ZOMATO.NS", "tv": "NSE:ZOMATO"},
+    "HFCL Limited (HFCL.NS)": {"yf": "HFCL.NS", "tv": "NSE:HFCL"},
+    "Suzlon Energy (SUZLON.NS)": {"yf": "SUZLON.NS", "tv": "NSE:SUZLON"},
+    "Marine Electricals (MARINE.NS)": {"yf": "MARINE.NS", "tv": "NSE:MARINE"},
+    "Jupiter Wagons (JUPITERWAG.NS)": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
+    "Rama Steel Tubes (RAMASTEEL.NS)": {"yf": "RAMASTEEL.NS", "tv": "NSE:RAMASTEEL"},
+    "Texmaco Rail & Engineering (TEXRAIL.NS)": {"yf": "TEXRAIL.NS", "tv": "NSE:TEXRAIL"},
+    "Texmaco Infrastructure (TEXINFRA.NS)": {"yf": "TEXINFRA.NS", "tv": "NSE:TEXINFRA"},
+    "Bodal Chemicals (BODALCHEM.NS)": {"yf": "BODALCHEM.NS", "tv": "NSE:BODALCHEM"},
+    "Refex Industries (REFEX.NS)": {"yf": "REFEX.NS", "tv": "NSE:REFEX"},
+    "India Nippon Electricals (INDNIPPON.NS)": {"yf": "INDNIPPON.NS", "tv": "NSE:INDNIPPON"},
+    "Tata Power (TATAPOWER.NS)": {"yf": "TATAPOWER.NS", "tv": "NSE:TATAPOWER"},
+    "Adani Enterprises (ADANIENT.NS)": {"yf": "ADANIENT.NS", "tv": "NSE:ADANIENT"},
+    "Trent Limited (TRENT.NS)": {"yf": "TRENT.NS", "tv": "NSE:TRENT"},
+    "Dixon Technologies (DIXON.NS)": {"yf": "DIXON.NS", "tv": "NSE:DIXON"},
+    "Polycab India (POLYCAB.NS)": {"yf": "POLYCAB.NS", "tv": "NSE:POLYCAB"},
+    "Kaynes Technology (KAYNES.NS)": {"yf": "KAYNES.NS", "tv": "NSE:KAYNES"},
+    "IRCTC (IRCTC.NS)": {"yf": "IRCTC.NS", "tv": "NSE:IRCTC"},
+    "RVNL (RVNL.NS)": {"yf": "RVNL.NS", "tv": "NSE:RVNL"},
+    "IREDA (IREDA.NS)": {"yf": "IREDA.NS", "tv": "NSE:IREDA"},
+    "Jio Financial Services (JIOFIN.NS)": {"yf": "JIOFIN.NS", "tv": "NSE:JIOFIN"},
+    "Bajaj Finance (BAJFINANCE.NS)": {"yf": "BAJFINANCE.NS", "tv": "NSE:BAJFINANCE"},
+    "Larsen & Toubro (LT.NS)": {"yf": "LT.NS", "tv": "NSE:LT"}
+}
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -112,10 +113,7 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
-def render_tradingview_chart(ticker_symbol):
-    clean_sym = ticker_symbol.replace(".NS", "").replace(".BO", "").upper()
-    tv_symbol = f"NSE:{clean_sym}"
-    
+def render_tradingview_chart(tv_symbol):
     widget_html = f"""
     <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
@@ -191,10 +189,17 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# FREE-TEXT SEARCH BAR (कोई भी नया शेयर टाइप करें)
+# SMART AUTO-SUGGESTION SEARCH BAR
 # ==========================================
-user_query = st.text_input("🔍 कोई भी शेयर सर्च करें (उदा. Refex, Reliance, Zomato, Tata):", value="RELIANCE")
-ticker_symbol = get_stock_ticker(user_query)
+selected_stock_label = st.selectbox(
+    "🔍 शेयर सर्च करें या सूची से चुनें (Search / Select Stock):",
+    options=list(stocks_dict.keys()),
+    index=0
+)
+
+# Extract correct Yahoo and TradingView Tickers
+ticker_symbol = stocks_dict[selected_stock_label]["yf"]
+tv_ticker = stocks_dict[selected_stock_label]["tv"]
 
 st.markdown("---")
 
@@ -263,8 +268,8 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         st.markdown("📉 पिछले दिन की तुलना में बाजार के रुझान का निरीक्षण किया गया है।")
 
     st.markdown("---")
-    st.markdown(f"### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट ({ticker_symbol})")
-    render_tradingview_chart(ticker_symbol)
+    st.markdown(f"### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट ({tv_ticker})")
+    render_tradingview_chart(tv_ticker)
 
 elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
     st.subheader(f"📑 फंडामेंटल एनालिसिस: {info.get('longName', ticker_symbol)}")
@@ -314,13 +319,9 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
     
     if st.button("स्कैन रन करें", type="primary"):
         with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है..."):
-            universe = [
-                "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
-                "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", 
-                "JUPITERWAG.NS", "RAMASTEEL.NS", "REFEX.NS", "TATAPOWER.NS", "ADANIENT.NS"
-            ]
+            universe_yf = [v["yf"] for v in stocks_dict.values()]
             res = []
-            for s in universe:
+            for s in universe_yf:
                 try:
                     inf = yf.Ticker(s).info
                     price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
