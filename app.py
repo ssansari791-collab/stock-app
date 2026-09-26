@@ -52,25 +52,44 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS & STOCK DICTIONARY
+# SMART SEARCH & MAPPING DATABASE
 # ==========================================
 
-stocks_dict = {
-    "RELIANCE INDUSTRIES LTD (RELIANCE.NS)": "RELIANCE.NS",
-    "TATA CONSULTANCY SERVICES (TCS.NS)": "TCS.NS",
-    "INFOSYS LIMITED (INFY.NS)": "INFY.NS",
-    "HDFC BANK LTD (HDFCBANK.NS)": "HDFCBANK.NS",
-    "ITC LIMITED (ITC.NS)": "ITC.NS",
-    "STATE BANK OF INDIA (SBIN.NS)": "SBIN.NS",
-    "TATA MOTORS LTD (TATAMOTORS.NS)": "TATAMOTORS.NS",
-    "ZOMATO LIMITED (ZOMATO.NS)": "ZOMATO.NS",
-    "HFCL LIMITED (HFCL.NS)": "HFCL.NS",
-    "SUZLON ENERGY (SUZLON.NS)": "SUZLON.NS",
-    "MARINE ELECTRICALS (MARINE.NS)": "MARINE.NS",
-    "JUPITER WAGONS (JUPITERWAG.NS)": "JUPITERWAG.NS",
-    "TATA POWER CO LTD (TATAPOWER.NS)": "TATAPOWER.NS",
-    "ADANI ENTERPRISES (ADANIENT.NS)": "ADANIENT.NS"
+stocks_database = {
+    "RELIANCE": "RELIANCE.NS",
+    "TCS": "TCS.NS",
+    "INFY": "INFY.NS",
+    "HDFC": "HDFCBANK.NS",
+    "HDFCBANK": "HDFCBANK.NS",
+    "ITC": "ITC.NS",
+    "SBIN": "SBIN.NS",
+    "TATAMOTORS": "TATAMOTORS.NS",
+    "ZOMATO": "ZOMATO.NS",
+    "HFCL": "HFCL.NS",
+    "SUZLON": "SUZLON.NS",
+    "MARINE": "MARINE.NS",
+    "JUPITER": "JUPITERWAG.NS",
+    "JUPITERWAG": "JUPITERWAG.NS",
+    "TATAPOWER": "TATAPOWER.NS",
+    "ADANIENT": "ADANIENT.NS"
 }
+
+def resolve_ticker(user_input):
+    clean_query = user_input.upper().strip()
+    if not clean_query:
+        return "RELIANCE.NS"
+    
+    if clean_query in stocks_database:
+        return stocks_database[clean_query]
+        
+    for key, val in stocks_database.items():
+        if clean_query in key or key in clean_query:
+            return val
+            
+    if ".NS" in clean_query or ".BO" in clean_query:
+        return clean_query
+        
+    return f"{clean_query}.NS"
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -177,17 +196,10 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# SEARCH SECTION (TEXT INPUT + SELECTBOX)[span_6](start_span)[span_6](end_span)
+# ROBUST SEARCH BAR
 # ==========================================
-search_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Aegis, Tata, Marine, Reliance):", placeholder="यहाँ टाइप करें...")
-
-# Filter dictionary based on search query
-filtered_stocks = {k: v for k, v in stocks_dict.items() if search_query.lower() in k.lower()}
-if not filtered_stocks:
-    filtered_stocks = stocks_dict
-
-selected_stock_label = st.selectbox("📌 मिलते-जुले शेयरों की सूची (सूची से चुनें):[span_7](start_span)[span_7](end_span)", options=list(filtered_stocks.keys()))
-ticker_symbol = filtered_stocks[selected_stock_label]
+search_input = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Reliance, Tata, HFCL, Marine, Jupiter):", value="RELIANCE")
+ticker_symbol = resolve_ticker(search_input)
 
 st.markdown("---")
 
@@ -209,7 +221,7 @@ info, hist_data = fetch_stock_data(ticker_symbol)
 # ==========================================
 
 if app_mode == "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)":
-    st.subheader(f"📊 {ticker_symbol} - बाजार सारांश[span_8](start_span)[span_8](end_span)")
+    st.subheader(f"📊 {ticker_symbol} - बाजार सारांश")
     
     curr_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
     day_high = info.get('dayHigh', 'N/A')
@@ -218,45 +230,45 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
     
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"<div class='metric-card'><h4>ताजा भाव (Close)[span_9](start_span)[span_9](end_span)</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>ताजा भाव (Close)</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"<div class='metric-card'><h4>आज का हाई (High)[span_10](start_span)[span_10](end_span)</h4><h3>₹ {day_high}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>आज का हाई (High)</h4><h3>₹ {day_high}</h3></div>", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"<div class='metric-card'><h4>आज का लो (Low)[span_11](start_span)[span_11](end_span)</h4><h3>₹ {day_low}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>आज का लो (Low)</h4><h3>₹ {day_low}</h3></div>", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"<div class='metric-card'><h4>वॉल्यूम (Volume)[span_12](start_span)[span_12](end_span)</h4><h3>{volume:,}</h3></div>" if isinstance(volume, (int, float)) else f"<div class='metric-card'><h4>वॉल्यूम</h4><h3>{volume}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>वॉल्यूम (Volume)</h4><h3>{volume:,}</h3></div>" if isinstance(volume, (int, float)) else f"<div class='metric-card'><h4>वॉल्यूम</h4><h3>{volume}</h3></div>", unsafe_allow_html=True)
 
     st.markdown("---")
     
-    # Support & Resistance Section[span_13](start_span)[span_13](end_span)
-    st.markdown("### 🎯 सपोर्ट और रेजिस्टेंस लेवल्स (Pivot Points)[span_14](start_span)[span_14](end_span)")
+    # Support & Resistance Section
+    st.markdown("### 🎯 सपोर्ट और रेजिस्टेंस लेवल्स (Pivot Points)")
     pivots = calculate_pivot_points(hist_data)
     
     if pivots:
         p_col1, p_col2 = st.columns(2)
         with p_col1:
-            st.markdown("#### 🔵 सपोर्ट लेवल्स[span_15](start_span)[span_15](end_span)")
+            st.markdown("#### 🔵 सपोर्ट लेवल्स")
             st.markdown(f"**S1:** ₹ {pivots['S1']}")
             st.markdown(f"**S2:** ₹ {pivots['S2']}")
             st.markdown(f"**S3:** ₹ {pivots['S3']}")
         with p_col2:
-            st.markdown("#### 🟢 रेजिस्टेंस लेवल्स[span_16](start_span)[span_16](end_span)")
+            st.markdown("#### 🟢 रेजिस्टेंस लेवल्स")
             st.markdown(f"**R1:** ₹ {pivots['R1']}")
             st.markdown(f"**R2:** ₹ {pivots['R2']}")
             st.markdown(f"**R3:** ₹ {pivots['R3']}")
             
-        # Quick Analysis Insights[span_17](start_span)[span_17](end_span)
+        # Quick Analysis Insights
         st.markdown("---")
-        st.markdown("### 📝 त्वरित विश्लेषण बिंदु[span_18](start_span)[span_18](end_span)")
+        st.markdown("### 📝 त्वरित विश्लेषण बिंदु")
         if isinstance(curr_price, (int, float)):
             if curr_price < pivots['Pivot']:
-                st.markdown(f"⚠️ शेयर का भाव पिवट पॉइंट (₹ {pivots['Pivot']}) से नीचे है, जो कमजोरी दिखा सकता है।[span_19](start_span)[span_19](end_span)")
+                st.markdown(f"⚠️ शेयर का भाव पिवट पॉइंट (₹ {pivots['Pivot']}) से नीचे है, जो कमजोरी दिखा सकता है।")
             else:
                 st.markdown(f"🚀 शेयर का भाव पिवट पॉइंट (₹ {pivots['Pivot']}) से ऊपर है, जो मजबूती दिखा सकता है।")
-        st.markdown("📉 पिछले दिन की तुलना में बाजार के रुझान का निरीक्षण किया गया है।[span_20](start_span)[span_20](end_span)")
+        st.markdown("📉 पिछले दिन की तुलना में बाजार के रुझान का निरीक्षण किया गया है।")
 
     st.markdown("---")
-    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट")
+    st.markdown(f"### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट ({ticker_symbol})")
     render_tradingview_chart(ticker_symbol)
 
 elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
@@ -300,13 +312,14 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
         [
             "ब्रेकआउट / 52-वीक हाई के करीब",
             "अंडरवैल्यूड (कम P/E + उच्च ROE)",
+            "हाई ग्रोथ / हाई CAGR स्टॉक्स",
             "कम कर्ज वाली सुरक्षित कंपनियां"
         ]
     )
     
     if st.button("स्कैन रन करें", type="primary"):
         with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है..."):
-            universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS"]
+            universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", "JUPITERWAG.NS"]
             res = []
             for s in universe:
                 try:
@@ -317,11 +330,15 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
                     roe = inf.get('returnOnEquity', 0)
                     if roe and roe < 1: roe = roe * 100
                     de = inf.get('debtToEquity', 1)
+                    rev_growth = inf.get('revenueGrowth', 0)
+                    if rev_growth: rev_growth = rev_growth * 100
                     
                     match = False
                     if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price and h52 and price >= 0.90 * h52:
                         match = True
                     elif strategy == "अंडरवैल्यूड (कम P/E + उच्च ROE)" and pe and pe < 25 and roe and roe > 12:
+                        match = True
+                    elif strategy == "हाई ग्रोथ / हाई CAGR स्टॉक्स" and rev_growth and rev_growth > 10:
                         match = True
                     elif strategy == "कम कर्ज वाली सुरक्षित कंपनियां" and de is not None and de < 0.5:
                         match = True
