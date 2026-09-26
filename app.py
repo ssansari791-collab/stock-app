@@ -3,8 +3,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import streamlit.components.v1 as components
-from PIL import Image
-import io
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -33,8 +31,8 @@ st.markdown("""
         justify-content: space-between;
         align-items: center;
         background-color: #1e293b;
-        padding: 12px 20px;
-        border-radius: 14px;
+        padding: 10px 15px;
+        border-radius: 12px;
         border: 1px solid #334155;
         margin-bottom: 15px;
     }
@@ -152,30 +150,29 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# GROWW STYLE TOP HEADER (LOGO & PROFILE)
+# GROWW STYLE CORNER-TO-CORNER TOP HEADER
 # ==========================================
-col_logo, col_welcome, col_profile = st.columns([1, 2, 1])
+col_logo, col_profile_btn = st.columns([3, 1])
 
 with col_logo:
-    # बाईं तरफ लोगो के लिए गोल स्पेस / अपलोड ऑप्शन
+    # बाईं तरफ एकदम कोने में लोगो / टिक स्टॉक नाम
     st.markdown("🟢 **TickStock**")
 
-with col_welcome:
-    st.markdown("<h4 style='margin:0; color:#f8fafc;'>Welcome, User 👋</h4>", unsafe_allow_html=True)
-
-with col_profile:
-    # दाईं तरफ प्रोफाइल और सेटिंग्स के लिए पॉप-अप मेनू
-    with st.popover("⚙️ Profile / Settings"):
-        st.write("### यूजर प्रोफाइल")
-        uploaded_file = st.file_uploader("अपनी फोटो अपलोड करें", type=["jpg", "png", "jpeg"])
+with col_profile_btn:
+    # दाईं तरफ एकदम कोने में प्रोफाइल / सेटिंग्स आइकॉन
+    with st.popover("⚙️ Profile"):
+        st.write("### यूजर मेनू")
+        uploaded_file = st.file_uploader("प्रोफाइल फोटो लगाएं", type=["jpg", "png", "jpeg"])
         if uploaded_file is not None:
-            st.success("फोटो अपडेट कर दी गई है!")
+            st.success("फोटो अपडेट हो गई!")
         st.markdown("---")
-        st.markdown("- **ऐप वर्शन:** v1.0.0 Pro")
-        st.markdown("- **लॉगिन स्टेटस:** गेस्ट यूजर (Guest)")
+        st.markdown("🛠️ **सेटिंग्स (Settings)**")
+        st.markdown("👤 **अकाउंट टाइप:** गेस्ट यूजर")
         if st.button("शेयर ऐप (Share App)"):
-            st.success("ऐप लिंक कॉपी हो गया है!")
+            st.success("लिंक कॉपी हो गया है!")
 
+# वेलकम ग्रीटिंग और सर्च बार बिल्कुल ऊपर से शुरू
+st.markdown("<h4 style='margin: 5px 0 10px 0; color: #f8fafc;'>Welcome, User 👋</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ==========================================
