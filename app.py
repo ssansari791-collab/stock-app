@@ -3,10 +3,11 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="TickStox", layout="wide")
+
+
 
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
 def fetch_stock_suggestions(query):
@@ -183,56 +184,39 @@ try:
 
         st.divider()
 
-        # ==================== प्रोफेशनल कैंडलस्टिक चार्ट (इंडिकेटर के साथ) ====================
+        # ==================== प्रोफेशनल टेक्निकल चार्ट (इंडिकेटर और वॉल्यूम के साथ) ====================
         
-        st.markdown(f"### 📈 {selected_symbol} - प्रो कैंडलस्टिक चार्ट (Candlestick & Indicator)")
+        st.markdown(f"### 📈 {selected_symbol} - तकनीकी चार्ट और इंडिकेटर (SMA 20 & Volume)")
         
         try:
-            # 20 Period Simple Moving Average (SMA) जोड़ रहे हैं
+            # 20 दिन का मूविंग एवरेज (SMA 20) कैलकुलेट कर रहे हैं
             df['SMA20'] = df['Close'].rolling(window=20).mean()
 
-            # सबप्लॉट: ऊपर कैंडलस्टिक चार्ट, नीचे वॉल्यूम बार चार्ट
-            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                                vertical_spacing=0.03, row_heights=[0.7, 0.3])
+            # Matplotlib से प्रोफेशनल डार्क थीम वाला चार्ट बना रहे हैं
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+            
+            # ऐप के डार्क बैकग्राउंड से मैच करने के लिए रंग सेट करना
+            fig.patch.set_facecolor('#0e1117')
+            ax1.set_facecolor('#0e1117')
+            ax2.set_facecolor('#0e1117')
 
-            # 1. Candlestick Trace
-            fig.add_trace(go.Candlestick(
-                x=df.index,
-                open=df['Open'],
-                high=df['High'],
-                low=df['Low'],
-                close=df['Close'],
-                name='Candles',
-                increasing_line_color='#26a69a', 
-                decreasing_line_color='#ef5350'
-            ), row=1, col=1)
+            # 1. प्राइस और मूविंग एवरेज (SMA 20) लाइन
+            ax1.plot(df.index, df['Close'], label='Close Price', color='#26a69a', linewidth=2)
+            ax1.plot(df.index, df['SMA20'], label='SMA 20', color='#ff9800', linestyle='--', linewidth=1.5)
+            ax1.set_ylabel('Price (INR)', color='white', fontsize=10)
+            ax1.tick_params(colors='white')
+            ax1.grid(True, color='#333333', alpha=0.5)
+            ax1.legend(loc='upper left', facecolor='#1e1e1e', labelcolor='white')
 
-            # 2. Moving Average Trace (SMA 20)
-            fig.add_trace(go.Scatter(
-                x=df.index, y=df['SMA20'], 
-                line=dict(color='#ff9800', width=1.5), 
-                name='SMA 20'
-            ), row=1, col=1)
+            # 2. वॉल्यूम बार चार्ट
+            colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(df['Close'], df['Open'])]
+            ax2.bar(df.index, df['Volume'], color=colors, alpha=0.8)
+            ax2.set_ylabel('Volume', color='white', fontsize=10)
+            ax2.tick_params(colors='white')
+            ax2.grid(True, color='#333333', alpha=0.5)
 
-            # 3. Volume Bar Trace
-            colors = ['#26a69a' if row['Close'] >= row['Open'] else '#ef5350' for index, row in df.iterrows()]
-            fig.add_trace(go.Bar(
-                x=df.index, y=df['Volume'], 
-                marker_color=colors, 
-                name='Volume'
-            ), row=2, col=1)
-
-            # Layout Styling (Dark Theme match)
-            fig.update_layout(
-                template='plotly_dark',
-                height=550,
-                margin=dict(l=10, r=10, t=10, b=10),
-                xaxis_rangeslider_visible=False,
-                showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
+            plt.tight_layout()
+            st.pyplot(fig)
             
         except Exception as chart_err:
             st.line_chart(df['Close'])
