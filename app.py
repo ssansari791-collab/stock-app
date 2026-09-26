@@ -17,7 +17,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
+# 1. आपकी ओरिजिनल, सबसे दमदार लाइव सर्च फंक्शन (Original Live Search API)
 def fetch_stock_suggestions(query):
     try:
         encoded_query = urllib.parse.quote(query)
@@ -26,8 +26,6 @@ def fetch_stock_suggestions(query):
             url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         )
-        with urllib.request.urlopen(url, timeout=5) as response:
-            pass
         with urllib.request.urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode())
             quotes = data.get('quotes', [])
@@ -47,68 +45,49 @@ def fetch_stock_suggestions(query):
     except:
         return []
 
-# ==================== मुख्य स्क्रीन पर साफ़-सुथरा स्मार्ट स्क्रीनर और सर्च ====================
-st.markdown("### ⚡ TickStox - प्रोफेशनल स्टॉक एनालिटिक्स")
+st.markdown("### ⚡ TickStox - प्रोफेशनल स्टॉक एनालिटिक्स टर्मिनल")
 
-col_cat1, col_cat2 = st.columns(2)
+# अलग से दिए गए हाई P/E और मजबूत फंडामेंटल स्टॉक्स के शॉर्टकट विकल्प (अलग सेक्शन)
+st.markdown("#### 🔥 त्वरित श्रेणियां (Quick Screeners)")
+screener_mode = st.radio(
+    "मोड चुनें:",
+    ["🔍 सामान्य लाइव सर्च (Live Search)", "🔥 हाई P/E / मोमेंटम स्टॉक सूची", "🏛️ मजबूत फंडामेंटल स्टॉक सूची"],
+    horizontal=True
+)
 
-with col_cat1:
-    category_choice = st.selectbox(
-        "🔥 ट्रेंडिंग थीम्स / श्रेणियां:", 
-        [
-            "--- अपनी पसंद का स्टॉक टाइप करें ---", 
-            "🔥 हाई P/E / मोमेंटम (High P/E & Momentum)", 
-            "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)", 
-            "💰 उच्च लाभांश वाले (High Dividend Yield)"
-        ]
-    )
+# यदि यूजर श्रेणियां चुने तो उनके लिए सुझाई गई सूचियां
+preset_symbol = "RELIANCE.NS"
+if screener_mode == "🔥 हाई P/E / मोमेंटम स्टॉक सूची":
+    high_pe_list = ["TRENT.NS", "ZOMATO.NS", "DIXON.NS", "POLYCAB.NS", "HAL.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "COCHINSHIP.NS"]
+    chosen_preset = st.selectbox("चुनें (High P/E & Momentum):", high_pe_list)
+    preset_symbol = chosen_preset
+elif screener_mode == "🏛️ मजबूत फंडामेंटल स्टॉक सूची":
+    strong_fund_list = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS", "ICICIBANK.NS", "SBIN.NS"]
+    chosen_preset = st.selectbox("चुनें (Strong Fundamentals):", strong_fund_list)
+    preset_symbol = chosen_preset
 
-screener_stocks = {
-    "🔥 हाई P/E / मोमेंटम (High P/E & Momentum)": [
-        "TRENT.NS", "ZOMATO.NS", "DIXON.NS", "POLYCAB.NS", "PERSISTENT.NS", "MUTHOOTFIN.NS", 
-        "HAL.NS", "BEL.NS", "CHOLAFIN.NS", "TATACOMM.NS", "LODHA.NS", "MOTHERSON.NS",
-        "SRF.NS", "DLF.NS", "APOLLOHOSP.NS", "INDIGO.NS", "PIIND.NS", "NAUKRI.NS",
-        "RVNL.NS", "JWL.NS", "COCHINSHIP.NS", "MAZDOCK.NS", "IRFC.NS", "KPITTECH.NS"
-    ],
-    "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)": [
-        "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS", 
-        "ICICIBANK.NS", "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "BAJFINANCE.NS", "KOTAKBANK.NS",
-        "AXISBANK.NS", "SUNPHARMA.NS", "TITAN.NS", "ASIANPAINT.NS", "MARUTI.NS"
-    ],
-    "💰 उच्च लाभांश वाले (High Dividend Yield)": [
-        "COALINDIA.NS", "VEDL.NS", "ONGC.NS", "IOC.NS", "POWERGRID.NS", "NTPC.NS", 
-        "BPCL.NS", "HINDPETRO.NS", "GAIL.NS", "ITC.NS", "HCLTECH.NS", "PETRONET.NS", "NHPC.NS"
-    ]
-}
+# 2. ओरिजिनल और सबसे सटीक सर्च बॉक्स
+user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Zomato, Tata, Marine, Reliance):", preset_symbol.replace(".NS", ""))
 
-default_query = "RELIANCE"
-with col_cat2:
-    if category_choice != "--- अपनी पसंद का स्टॉक टाइप करें ---":
-        selected_category_list = screener_stocks[category_choice]
-        display_names = [s.replace(".NS", "") for s in selected_category_list]
-        chosen_cat_display = st.selectbox("या सूची से सीधा चुनें:", display_names)
-        default_query = chosen_cat_display
+selected_symbol = preset_symbol
 
-user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें:", default_query)
-
-selected_symbol = "RELIANCE.NS"
-
-if user_query:
-    clean_query = user_query.strip()
-    
-    with st.spinner("🔍 शेयर खोजे जा रहे हैं..."):
-        suggestions = fetch_stock_suggestions(clean_query)
-    
-    if suggestions:
-        options_map = {item['display']: item['symbol'] for item in suggestions}
-        chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची चुनें:", list(options_map.keys()))
-        selected_symbol = options_map[chosen_display]
-    else:
-        upper_q = clean_query.upper().replace(" ", "")
-        if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
-            selected_symbol = upper_q + ".NS"
+if screener_mode == "🔍 सामान्य लाइव सर्च (Live Search)":
+    if user_query:
+        clean_query = user_query.strip()
+        
+        with st.spinner("🔍 इंटरनेट से शेयर खोजे जा रहे हैं..."):
+            suggestions = fetch_stock_suggestions(clean_query)
+        
+        if suggestions:
+            options_map = {item['display']: item['symbol'] for item in suggestions}
+            chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची (सूची से चुनें):", list(options_map.keys()))
+            selected_symbol = options_map[chosen_display]
         else:
-            selected_symbol = upper_q
+            upper_q = clean_query.upper().replace(" ", "")
+            if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
+                selected_symbol = upper_q + ".NS"
+            else:
+                selected_symbol = upper_q
 
 st.write("---")
 
@@ -126,7 +105,7 @@ try:
                 selected_symbol = bse_symbol
                 
     if df.empty:
-        st.error(f"❌ '{selected_symbol}' का डेटा नहीं मिला। कृपया नाम सही से लिखें।")
+        st.error(f"❌ '{selected_symbol}' का डेटा नहीं मिला। कृपया कंपनी का नाम सही से लिखें।")
     else:
         # कॉर्पोरेट इवेंट्स अलर्ट
         try:
@@ -204,7 +183,6 @@ try:
             div_yield = info.get('dividendYield', None)
             div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/A"
             
-            # नए रेश्यो (ROE, ROCE, Industry PE, CAGR)
             roe = info.get('returnOnEquity', None)
             roe_str = f"{roe * 100:.2f}%" if roe else "N/A"
             
@@ -215,14 +193,12 @@ try:
             high_52 = info.get('fiftyTwoWeekHigh', 'N/A')
             low_52 = info.get('fiftyTwoWeekLow', 'N/A')
             
-            # 3 साल का अनुमानित CAGR मूल्य वृद्धि
             cagr_val = "N/A"
             if len(df) >= 252:
                 start_p = df.iloc[0]['Close']
                 end_p = df.iloc[-1]['Close']
                 cagr_val = f"{(((end_p/start_p)**(1/0.5))-1)*100:.2f}%"
 
-            # साफ़-सुथरे कार्ड्स लेआउट में दिखाना
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("मार्केट कैप", market_cap_str)
             c2.metric("स्टॉक P/E", f"{pe_ratio:.2f}" if isinstance(pe_ratio, (int, float)) else pe_ratio)
@@ -230,10 +206,10 @@ try:
             c4.metric("P/B रेश्यो", f"{pb_ratio:.2f}" if isinstance(pb_ratio, (int, float)) else pb_ratio)
 
             c5, c6, c7, c8 = st.columns(4)
-            c5.metric("ROE (रिटर्न ऑन इक्विटी)", roe_str)
+            c5.metric("ROE", roe_str)
             c6.metric("ROCE", roce_str)
-            c7.metric("EPS (अर्निंग्स प्रति शेयर)", f"₹{eps:.2f}" if isinstance(eps, (int, float)) else eps)
-            c8.metric("CAGR (अवधि रिटर्न)", cagr_val)
+            c7.metric("EPS", f"₹{eps:.2f}" if isinstance(eps, (int, float)) else eps)
+            c8.metric("CAGR", cagr_val)
 
             c9, c10, c11 = st.columns(3)
             c9.metric("डिविडेंड यील्ड", div_yield_str)
