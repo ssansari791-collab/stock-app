@@ -5,8 +5,6 @@ import urllib.request
 import json
 st.set_page_config(page_title="TickStox", layout="wide")
 
-
-
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
 def fetch_stock_suggestions(query):
     try:
@@ -26,7 +24,6 @@ def fetch_stock_suggestions(query):
                 short_name = q.get('shortname', q.get('longname', symbol))
                 exchange = q.get('exchange', '')
                 
-                # Filter for Indian markets (.NS for NSE, .BO for BSE or standard Indian exchanges)
                 if symbol.endswith('.NS') or symbol.endswith('.BO') or exchange in ['NSI', 'BSE', 'NSE']:
                     stock_options.append({
                         'display': f"{short_name} ({symbol})",
@@ -44,7 +41,6 @@ selected_symbol = "RELIANCE.NS"
 if user_query:
     clean_query = user_query.strip()
     
-    # Live search from internet
     with st.spinner("🔍 इंटरनेट से शेयर खोजे जा रहे हैं..."):
         suggestions = fetch_stock_suggestions(clean_query)
     
@@ -53,7 +49,6 @@ if user_query:
         chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची (सूची से चुनें):", list(options_map.keys()))
         selected_symbol = options_map[chosen_display]
     else:
-        # Direct fallback: if search API is busy, try formatting directly with .NS or .BO
         upper_q = clean_query.upper().replace(" ", "")
         if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
             selected_symbol = upper_q + ".NS"
@@ -62,13 +57,11 @@ if user_query:
 
 st.write("---")
 
-# Fetch and display live market data and pivot points
 try:
     stock = yf.Ticker(selected_symbol)
     df = stock.history(period="6mo")
     
     if df.empty:
-        # Try BSE (.BO) if NSE (.NS) fails
         if selected_symbol.endswith(".NS"):
             bse_symbol = selected_symbol.replace(".NS", ".BO")
             stock = yf.Ticker(bse_symbol)
@@ -144,7 +137,7 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल और ठीक किया गया ट्रेडिंगव्यू चार्ट ====================
+        # ==================== फंडामेंटल और चार्ट सेक्शन ====================
         
         st.divider()
 
@@ -175,59 +168,60 @@ try:
 
             f5, f6, f7 = st.columns(3)
             f5.metric("डिविडेंड यील्ड", div_yield_str)
-            f6.metric("52 वीक हाई (High)", f"₹{high_52}" if high_52 == 'N/A' else f"₹{high_52:.2f}")
-            f7.metric("52 वीक लो (Low)", f"₹{low_52}" if low_52 == 'N/A' else f"₹{low_52:.2f}")
+            f6.metric("52 वीक हाई (High)", f"₹{high_52}" if high_52 == 'N/Y' or high_52 == 'N/A' else f"₹{high_52:.2f}")
+            f7.metric("52 वीक लो (Low)", f"₹{low_52}" if low_52 == 'N/Y' or low_52 == 'N/A' else f"₹{low_52:.2f}")
 
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
 
         st.divider()
 
-        # 2. Advanced TradingView Chart (Fixed Symbol to Prevent AAPL Default)
-        st.markdown("### 📈 ट्रेडिंगव्यू लाइव चार्ट (TradingView Advanced Chart)")
+        # 2. Advanced Chart Section (TradingView with Safe Fallback)
+        st.markdown("### 📈 स्टॉक प्राइस चार्ट (Price Chart)")
         
-        # सिंबल को पूरी तरह साफ़ करके सही एक्सचेंज फॉर्मेट (NSE:SYMBOL) में सेट किया गया है
         clean_sym = selected_symbol.replace(".NS", "").replace(".BO", "").strip().upper()
         if ".BO" in selected_symbol.upper() or "BSE" in selected_symbol.upper():
             tv_symbol = f"BSE:{clean_sym}"
         else:
             tv_symbol = f"NSE:{clean_sym}"
 
-        tradingview_html = f"""
-        <!-- TradingView Widget BEGIN -->
-        <div class="tradingview-widget-container" style="height:550px;width:100%">
-          <div id="tradingview_chart" style="height:100%;width:100%"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-          <script type="text/javascript">
-          new TradingView.widget(
-          {{
-            "width": "100%",
-            "height": 550,
-            "symbol": "{tv_symbol}",
-            "interval": "D",
-            "timezone": "Asia/Kolkata",
-            "theme": "dark",
-            "style": "1",
-            "locale": "in",
-            "toolbar_bg": "#f1f3f6",
-            "enable_publishing": false,
-            "allow_symbol_change": true,
-            "details": true,
-            "hotlist": true,
-            "calendar": true,
-            "studies": [
-              "RSI@tv-basicstudies",
-              "MACD@tv-basicstudies",
-              "Moving Average Exponential@tv-basicstudies"
-            ],
-            "container_id": "tradingview_chart"
-          }}
-          );
-          </script>
-        </div>
-        <!-- TradingView Widget END -->
-        """
-        st.components.v1.html(tradingview_html, height=570)
-            
+        # Try rendering TradingView, with Streamlit native chart as a guaranteed reliable fallback
+        try:
+            tradingview_html = f"""
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container" style="height:500px;width:100%">
+              <div id="tradingview_chart" style="height:100%;width:100%"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget(
+              {{
+                "width": "100%",
+                "height": 500,
+                "symbol": "{tv_symbol}",
+                "interval": "D",
+                "timezone": "Asia/Kolkata",
+                "theme": "dark",
+                "style": "1",
+                "locale": "in",
+                "toolbar_bg": "#f1f3f6",
+                "enable_publishing": false,
+                "allow_symbol_change": false,
+                "details": false,
+                "studies": [
+                  "RSI@tv-basicstudies",
+                  "MACD@tv-basicstudies"
+                ],
+                "container_id": "tradingview_chart"
+              }}
+              );
+              </script>
+            </div>
+            <!-- TradingView Widget END -->
+            """
+            st.components.v1.html(tradingview_html, height=520)
+        except:
+            # Fallback to Streamlit built-in line chart if widget fails
+            st.line_chart(df['Close'])
+
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
