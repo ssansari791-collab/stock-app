@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import streamlit.components.v1 as components
+from PIL import Image
+import io
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -15,7 +17,7 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Hide all default streamlit headers and footers */
+    /* Hide all default streamlit headers, footers and menu */
     header {visibility: hidden !important;}
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
@@ -25,16 +27,16 @@ st.markdown("""
     .main { background-color: #0f172a; color: #f8fafc; }
     .stApp { background-color: #0f172a; }
     
-    /* Top Navbar Styling */
-    .top-nav {
+    /* Top Header Navbar Container */
+    .top-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         background-color: #1e293b;
-        padding: 10px 20px;
-        border-radius: 12px;
+        padding: 12px 20px;
+        border-radius: 14px;
         border: 1px solid #334155;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
     
     .metric-card {
@@ -150,25 +152,29 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# GROWW STYLE TOP HEADER BAR
+# GROWW STYLE TOP HEADER (LOGO & PROFILE)
 # ==========================================
-nav_c1, nav_c2, nav_c3 = st.columns([2, 3, 2])
+col_logo, col_welcome, col_profile = st.columns([1, 2, 1])
 
-with nav_c1:
-    st.markdown("### 📈 **TickStock**")
+with col_logo:
+    # बाईं तरफ लोगो के लिए गोल स्पेस / अपलोड ऑप्शन
+    st.markdown("🟢 **TickStock**")
 
-with nav_c2:
-    st.markdown("<p style='margin: 5px 0 0 0; color: #94a3b8; font-size: 0.9rem;'>👋 Welcome, Abdul Kadir</p>", unsafe_allow_html=True)
+with col_welcome:
+    st.markdown("<h4 style='margin:0; color:#f8fafc;'>Welcome, User 👋</h4>", unsafe_allow_html=True)
 
-with nav_c3:
-    col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        if st.button("👤 Profile"):
-            st.info("प्रोफाइल: अब्दुल कादिर (Abdul Kadir)\nईमेल/अकाउंट कनेक्टेड है।")
-    with col_p2:
-        if st.button("🔗 Share"):
-        # Share functionality hint or success
-            st.success("ऐप लिंक कॉपी कर लिया गया है!")
+with col_profile:
+    # दाईं तरफ प्रोफाइल और सेटिंग्स के लिए पॉप-अप मेनू
+    with st.popover("⚙️ Profile / Settings"):
+        st.write("### यूजर प्रोफाइल")
+        uploaded_file = st.file_uploader("अपनी फोटो अपलोड करें", type=["jpg", "png", "jpeg"])
+        if uploaded_file is not None:
+            st.success("फोटो अपडेट कर दी गई है!")
+        st.markdown("---")
+        st.markdown("- **ऐप वर्शन:** v1.0.0 Pro")
+        st.markdown("- **लॉगिन स्टेटस:** गेस्ट यूजर (Guest)")
+        if st.button("शेयर ऐप (Share App)"):
+            st.success("ऐप लिंक कॉपी हो गया है!")
 
 st.markdown("---")
 
