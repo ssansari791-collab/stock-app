@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import streamlit.components.v1 as components
+import plotly.graph_objects as go
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -13,7 +13,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS to hide sidebar and style the clean top-to-bottom UI
 st.markdown("""
     <style>
     [data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {
@@ -81,53 +80,43 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
-def render_tradingview_chart(symbol):
-    clean_sym = symbol.replace(".NS", "").upper()
-    tv_symbol = f"NSE:{clean_sym}"
+def render_plotly_chart(hist, symbol):
+    """Renders a clean, interactive professional candlestick chart without any popups."""
+    if hist.empty:
+        st.warning("चार्ट के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
+        return
+
+    fig = go.Figure(data=[go.Candlestick(
+        x=hist.index,
+        open=hist['Open'],
+        high=hist['High'],
+        low=hist['Low'],
+        close=hist['Close'],
+        name='Price'
+    )])
     
-    # Injected JavaScript to automatically hide any TradingView restriction popups/modals
-    widget_html = f"""
-    <div class="tradingview-widget-container" style="height:500px;width:100%">
-      <div id="tradingview_chart" style="height:100%;width:100%"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget(
-      {{
-        "width": "100%",
-        "height": "500",
-        "symbol": "{tv_symbol}",
-        "interval": "D",
-        "timezone": "Asia/Kolkata",
-        "theme": "dark",
-        "style": "1",
-        "locale": "in",
-        "toolbar_bg": "#1e293b",
-        "enable_publishing": false,
-        "allow_symbol_change": false,
-        "details": false,
-        "hotlist": false,
-        "calendar": false,
-        "studies": [
-          "RSI@tv-basicstudies",
-          "MACD@tv-basicstudies",
-          "SuperTrend@tv-basicstudies"
-        ],
-        "container_id": "tradingview_chart"
-      }});
-      
-      // Auto-hide TradingView notification popups
-      setInterval(function() {{
-          var dialogs = document.querySelectorAll('div[class*="dialog"], div[class*="notification"]');
-          dialogs.forEach(function(el) {{
-              if (el.innerText && el.innerText.includes("TradingView")) {{
-                  el.style.display = 'none';
-              }}
-          }});
-      }}, 300);
-      </script>
-    </div>
-    """
-    components.html(widget_html, height=510, scrolling=False)
+    # Add 20-day Moving Average for technical analysis
+    hist['MA20'] = hist['Close'].rolling(window=20).mean()
+    fig.add_trace(go.Scatter(
+        x=hist.index, 
+        y=hist['MA20'], 
+        mode='lines', 
+        name='MA 20', 
+        line=dict(color='#38bdf8', width=1.5)
+    ))
+
+    fig.update_layout(
+        title=dict(text=f"{symbol} - Interactive Price Chart", font=dict(color='white', size=16)),
+        xaxis_title="Date",
+        yaxis_title="Price (₹)",
+        template="plotly_dark",
+        height=500,
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor='#0f172a',
+        plot_bgcolor='#1e293b',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 def get_smart_badge(metric_name, value):
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -193,8 +182,8 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         mcap = info.get('marketCap', 0)
         st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट")
-    render_tradingview_chart(ticker_symbol)
+    st.markdown("### 📊 प्रोफेशनल कैंडलस्टिक चार्ट (Clean Pro Chart)")
+    render_plotly_chart(hist_data, ticker_symbol)
     
     st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
     pivots = calculate_pivot_points(hist_data)
@@ -254,6 +243,7 @@ st.markdown("""
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
