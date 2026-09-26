@@ -103,7 +103,7 @@ try:
         # Display Metrics
         st.subheader(f"📊 {selected_symbol} - बाजार सारांश")
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
+m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
         m2.metric("आज का हाई (High)", f"₹{high_price:.2f}")
         m3.metric("आज का लो (Low)", f"₹{low_price:.2f}")
         m4.metric("वॉल्यूम (Volume)", f"{volume:,}")
@@ -144,17 +144,17 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== NEW ADDITIONS (बिना पुराना कोड बदले जोड़े गए फीचर्स) ====================
+        # ==================== फंडामेंटल और ट्रेडिंगव्यू चार्ट जोड़े गए हैं ====================
         
         st.divider()
 
-        # 1. Fundamental Data Section (Market Cap, PE, EPS, PB, CAGR etc.)
+        # 1. Fundamental Data Section
         st.markdown("### 🏢 फंडामेंटल डेटा (Fundamentals)")
         try:
             info = stock.info
             market_cap = info.get('marketCap', 'N/A')
             if market_cap != 'N/A':
-                market_cap_cr = market_cap / 10000000  # Convert to Crores
+                market_cap_cr = market_cap / 10000000  
                 market_cap_str = f"₹{market_cap_cr:,.2f} Cr"
             else:
                 market_cap_str = "उपलब्ध नहीं"
@@ -164,8 +164,10 @@ try:
             eps = info.get('trailingEps', 'N/A')
             div_yield = info.get('dividendYield', None)
             div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/A"
-            52_high = info.get('fiftyTwoWeekHigh', 'N/A')
-            52_low = info.get('fiftyTwoWeekLow', 'N/A')
+            
+            # वेरिएबल के नाम ठीक किए गए हैं (नंबर से शुरू नहीं हो सकते)
+            high_52 = info.get('fiftyTwoWeekHigh', 'N/A')
+            low_52 = info.get('fiftyTwoWeekLow', 'N/A')
 
             f1, f2, f3, f4 = st.columns(4)
             f1.metric("मार्केट कैप (Market Cap)", market_cap_str)
@@ -175,23 +177,21 @@ try:
 
             f5, f6, f7 = st.columns(3)
             f5.metric("डिविडेंड यील्ड", div_yield_str)
-            f6.metric("52 वीक हाई (High)", f"₹{52_high}" if 52_high == 'N/A' else f"₹{52_high:.2f}")
-            f7.metric("52 वीक लो (Low)", f"₹{52_low}" if 52_low == 'N/A' else f"₹{52_low:.2f}")
+            f6.metric("52 वीक हाई (High)", f"₹{high_52}" if high_52 == 'N/A' else f"₹{high_52:.2f}")
+            f7.metric("52 वीक लो (Low)", f"₹{low_52}" if low_52 == 'N/A' else f"₹{low_52:.2f}")
 
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
 
         st.divider()
 
-        # 2. Advanced TradingView Chart with Indicators Support
+        # 2. Advanced TradingView Chart
         st.markdown("### 📈 ट्रेडिंगव्यू लाइव चार्ट (TradingView Advanced Chart)")
         
-        # Clean symbol format for TradingView widget (e.g. RELIANCE.NS -> NSE:RELIANCE or BSE:500325)
         tv_symbol = selected_symbol.replace('.NS', ':NSE').replace('.BO', ':BSE')
         if ':' not in tv_symbol:
             tv_symbol = f"NSE:{tv_symbol}"
 
-        # Embedded TradingView Advanced Real-time Chart Widget HTML/JS
         tradingview_html = f"""
         <!-- TradingView Widget BEGIN -->
         <div class="tradingview-widget-container" style="height:550px;width:100%">
@@ -227,8 +227,6 @@ try:
         <!-- TradingView Widget END -->
         """
         st.components.v1.html(tradingview_html, height=570)
-
-        # ==============================================================================================
             
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
