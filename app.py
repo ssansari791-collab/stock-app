@@ -52,7 +52,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# ADVANCED SMART SEARCH & AUTO-CORRECT MAPPER
+# EXPANDED SMART SEARCH & MAPPING DATABASE
 # ==========================================
 
 stocks_database = {
@@ -71,8 +71,15 @@ stocks_database = {
     "JUPITER": "JUPITERWAG.NS",
     "JUPITERWAG": "JUPITERWAG.NS",
     "JUPITOR": "JUPITERWAG.NS",
+    "INDIA NIPPON": "INDNIPPON.NS",
+    "INDNIPPON": "INDNIPPON.NS",
     "TATAPOWER": "TATAPOWER.NS",
-    "ADANIENT": "ADANIENT.NS"
+    "ADANIENT": "ADANIENT.NS",
+    "TRENT": "TRENT.NS",
+    "DIXON": "DIXON.NS",
+    "POLYCAB": "POLYCAB.NS",
+    "KAYNES": "KAYNES.NS",
+    "MUTHOOTFIN": "MUTHOOTFIN.NS"
 }
 
 def resolve_ticker(user_input):
@@ -90,7 +97,9 @@ def resolve_ticker(user_input):
     if ".NS" in clean_query or ".BO" in clean_query:
         return clean_query
         
-    return f"{clean_query}.NS"
+    # बिना स्पेस के टिकर बनाने के लिए
+    formatted = clean_query.replace(" ", "")
+    return f"{formatted}.NS"
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -199,7 +208,7 @@ st.markdown("---")
 # ==========================================
 # ROBUST SEARCH BAR
 # ==========================================
-search_input = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Reliance, Tata, HFCL, Jupiter):", value="RELIANCE")
+search_input = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Reliance, Tata, India Nippon, Jupiter):", value="RELIANCE")
 ticker_symbol = resolve_ticker(search_input)
 
 st.markdown("---")
@@ -319,15 +328,20 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
     )
     
     if st.button("स्कैन रन करें", type="primary"):
-        with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है..."):
-            universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", "JUPITERWAG.NS"]
+        with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है... थोड़ा इंतज़ार करें"):
+            # स्कैनर के लिए बड़ा यूनिवर्स (विस्तृत सूची)
+            universe = [
+                "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
+                "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS", 
+                "JUPITERWAG.NS", "TRENT.NS", "DIXON.NS", "POLYCAB.NS", "KAYNES.NS", "ADANIENT.NS"
+            ]
             res = []
             for s in universe:
                 try:
                     inf = yf.Ticker(s).info
                     price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
                     h52 = inf.get('fiftyTwoWeekHigh', 0)
-                    pe = inf.get('trailingPE', 25)
+                    pe = inf.get('trailingPE', inf.get('forwardPE', 0))
                     roe = inf.get('returnOnEquity', 0)
                     if roe and roe < 1: roe = roe * 100
                     de = inf.get('debtToEquity', 1)
@@ -335,7 +349,7 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
                     match = False
                     if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price and h52 and price >= 0.90 * h52:
                         match = True
-                    elif strategy == "अंडरवैल्यूड (कम P/E + उच्च ROE)" and pe and pe < 25 and roe and roe > 12:
+                    elif strategy == "अंडरवैल्यूड (कम P/E + उच्च ROE)" and pe and 0 < pe < 25 and roe and roe > 12:
                         match = True
                     elif strategy == "हाई ग्रोथ / हाई P/E स्टॉक्स (High P/E & Growth)" and pe and pe > 30:
                         match = True
