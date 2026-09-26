@@ -52,38 +52,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS & ADVANCED SEARCH MAPPER
+# HELPER FUNCTIONS & STOCK DICTIONARY
 # ==========================================
 
-def format_ticker(query):
-    query = query.upper().strip()
-    if not query:
-        return "RELIANCE.NS"
-        
-    # अगर यूजर ने पहले से .NS या .BO लिखा है
-    if ".NS" in query or ".BO" in query:
-        return query
-        
-    # कुछ लोकप्रिय शेयरों के शॉर्टकट
-    stock_map = {
-        "RELIANCE": "RELIANCE.NS",
-        "TCS": "TCS.NS",
-        "INFY": "INFY.NS",
-        "HDFC": "HDFCBANK.NS",
-        "HDFCBANK": "HDFCBANK.NS",
-        "ITC": "ITC.NS",
-        "SBIN": "SBIN.NS",
-        "TATAMOTORS": "TATAMOTORS.NS",
-        "ZOMATO": "ZOMATO.NS",
-        "HFCL": "HFCL.NS",
-        "SUZLON": "SUZLON.NS",
-        "MARINE": "MARINE.NS"
-    }
-    
-    if query in stock_map:
-        return stock_map[query]
-        
-    return f"{query}.NS"
+stocks_dict = {
+    "RELIANCE INDUSTRIES LTD (RELIANCE.NS)": "RELIANCE.NS",
+    "TATA CONSULTANCY SERVICES (TCS.NS)": "TCS.NS",
+    "INFOSYS LIMITED (INFY.NS)": "INFY.NS",
+    "HDFC BANK LTD (HDFCBANK.NS)": "HDFCBANK.NS",
+    "ITC LIMITED (ITC.NS)": "ITC.NS",
+    "STATE BANK OF INDIA (SBIN.NS)": "SBIN.NS",
+    "TATA MOTORS LTD (TATAMOTORS.NS)": "TATAMOTORS.NS",
+    "ZOMATO LIMITED (ZOMATO.NS)": "ZOMATO.NS",
+    "HFCL LIMITED (HFCL.NS)": "HFCL.NS",
+    "SUZLON ENERGY (SUZLON.NS)": "SUZLON.NS",
+    "MARINE ELECTRICALS (MARINE.NS)": "MARINE.NS",
+    "JUPITER WAGONS (JUPITERWAG.NS)": "JUPITERWAG.NS",
+    "TATA POWER CO LTD (TATAPOWER.NS)": "TATAPOWER.NS",
+    "ADANI ENTERPRISES (ADANIENT.NS)": "ADANIENT.NS"
+}
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -120,14 +107,6 @@ def render_tradingview_chart(symbol):
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
-      // TradingView के एरर पॉप-अप को ऑटोमैटिक ब्लॉक करने के लिए
-      window.addEventListener('error', function(e) {{
-          if (e.message && e.message.includes('symbol')) {{
-              e.preventDefault();
-              return true;
-          }}
-      }}, true);
-
       new TradingView.widget(
       {{
         "width": "100%",
@@ -175,7 +154,7 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# TOP BAR: LOGO & SETTINGS (CORNER TO CORNER)
+# CORNER-TO-CORNER TOP BAR (LOGO & SETTINGS)
 # ==========================================
 header_c1, header_c2 = st.columns([8, 1])
 
@@ -198,13 +177,23 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# WORKING SEARCH & NAVIGATION SECTION
+# SEARCH SECTION (TEXT INPUT + SELECTBOX)[span_6](start_span)[span_6](end_span)
 # ==========================================
-user_query = st.text_input("🔍 शेयर सर्च करें (Search Stock Ticker)", value="MARINE", placeholder="जैसे: MARINE, RELIANCE, TCS, ZOMATO")
-ticker_symbol = format_ticker(user_query)
+search_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Aegis, Tata, Marine, Reliance):", placeholder="यहाँ टाइप करें...")
+
+# Filter dictionary based on search query
+filtered_stocks = {k: v for k, v in stocks_dict.items() if search_query.lower() in k.lower()}
+if not filtered_stocks:
+    filtered_stocks = stocks_dict
+
+selected_stock_label = st.selectbox("📌 मिलते-जुले शेयरों की सूची (सूची से चुनें):[span_7](start_span)[span_7](end_span)", options=list(filtered_stocks.keys()))
+ticker_symbol = filtered_stocks[selected_stock_label]
 
 st.markdown("---")
 
+# ==========================================
+# NAVIGATION TABS
+# ==========================================
 app_mode = st.radio(
     "मेनु चुनें (Navigation)", 
     ["📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)", "📑 फंडामेंटल हेल्थ (Fundamental Health)", "🔍 स्मार्ट स्कैनर (Smart Scanners)"], 
@@ -220,75 +209,142 @@ info, hist_data = fetch_stock_data(ticker_symbol)
 # ==========================================
 
 if app_mode == "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)":
-    st.subheader(f"विश्लेषण (Analyzing): {info.get('longName', ticker_symbol)}")
+    st.subheader(f"📊 {ticker_symbol} - बाजार सारांश[span_8](start_span)[span_8](end_span)")
+    
     curr_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
+    day_high = info.get('dayHigh', 'N/A')
+    day_low = info.get('dayLow', 'N/A')
+    volume = info.get('volume', 'N/A')
     
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"<div class='metric-card'><h4>लाइव भाव (Price)</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>ताजा भाव (Close)[span_9](start_span)[span_9](end_span)</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"<div class='metric-card'><h4>52W हाई (High)</h4><h3>₹ {info.get('fiftyTwoWeekHigh', 'N/A')}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>आज का हाई (High)[span_10](start_span)[span_10](end_span)</h4><h3>₹ {day_high}</h3></div>", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"<div class='metric-card'><h4>52W लो (Low)</h4><h3>₹ {info.get('fiftyTwoWeekLow', 'N/A')}</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>आज का लो (Low)[span_11](start_span)[span_11](end_span)</h4><h3>₹ {day_low}</h3></div>", unsafe_allow_html=True)
     with c4:
-        mcap = info.get('marketCap', 0)
-        st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><h4>वॉल्यूम (Volume)[span_12](start_span)[span_12](end_span)</h4><h3>{volume:,}</h3></div>" if isinstance(volume, (int, float)) else f"<div class='metric-card'><h4>वॉल्यूम</h4><h3>{volume}</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट (TradingView Real-Time Chart)")
-    render_tradingview_chart(ticker_symbol)
+    st.markdown("---")
     
-    st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
+    # Support & Resistance Section[span_13](start_span)[span_13](end_span)
+    st.markdown("### 🎯 सपोर्ट और रेजिस्टेंस लेवल्स (Pivot Points)[span_14](start_span)[span_14](end_span)")
     pivots = calculate_pivot_points(hist_data)
+    
     if pivots:
-        p1, p2, p3 = st.columns(3)
-        with p1:
-            st.markdown(f"<div class='metric-card'><b>पिवट (Pivot):</b> {pivots['Pivot']}<br><b>सपोर्ट 1:</b> {pivots['S1']}</div>", unsafe_allow_html=True)
-        with p2:
-            st.markdown(f"<div class='metric-card'><b>रेजिस्टेंस 1:</b> {pivots['R1']}<br><b>सपोर्ट 2:</b> {pivots['S2']}</div>", unsafe_allow_html=True)
-        with p3:
-            st.markdown(f"<div class='metric-card'><b>रेजिस्टेंस 2:</b> {pivots['R2']}<br><b>रेजिस्टेंस 3:</b> {pivots['R3']}</div>", unsafe_allow_html=True)
+        p_col1, p_col2 = st.columns(2)
+        with p_col1:
+            st.markdown("#### 🔵 सपोर्ट लेवल्स[span_15](start_span)[span_15](end_span)")
+            st.markdown(f"**S1:** ₹ {pivots['S1']}")
+            st.markdown(f"**S2:** ₹ {pivots['S2']}")
+            st.markdown(f"**S3:** ₹ {pivots['S3']}")
+        with p_col2:
+            st.markdown("#### 🟢 रेजिस्टेंस लेवल्स[span_16](start_span)[span_16](end_span)")
+            st.markdown(f"**R1:** ₹ {pivots['R1']}")
+            st.markdown(f"**R2:** ₹ {pivots['R2']}")
+            st.markdown(f"**R3:** ₹ {pivots['R3']}")
+            
+        # Quick Analysis Insights[span_17](start_span)[span_17](end_span)
+        st.markdown("---")
+        st.markdown("### 📝 त्वरित विश्लेषण बिंदु[span_18](start_span)[span_18](end_span)")
+        if isinstance(curr_price, (int, float)):
+            if curr_price < pivots['Pivot']:
+                st.markdown(f"⚠️ शेयर का भाव पिवट पॉइंट (₹ {pivots['Pivot']}) से नीचे है, जो कमजोरी दिखा सकता है।[span_19](start_span)[span_19](end_span)")
+            else:
+                st.markdown(f"🚀 शेयर का भाव पिवट पॉइंट (₹ {pivots['Pivot']}) से ऊपर है, जो मजबूती दिखा सकता है।")
+        st.markdown("📉 पिछले दिन की तुलना में बाजार के रुझान का निरीक्षण किया गया है।[span_20](start_span)[span_20](end_span)")
+
+    st.markdown("---")
+    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट")
+    render_tradingview_chart(ticker_symbol)
 
 elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
-    st.subheader(f"कंपनी की वित्तीय सेहत: {info.get('longName', ticker_symbol)}")
+    st.subheader(f"📑 फंडामेंटल एनालिसिस: {info.get('longName', ticker_symbol)}")
     
-    pe = info.get('trailingPE', None)
+    pe = info.get('trailingPE', info.get('forwardPE', None))
+    pb = info.get('priceToBook', None)
     roe = info.get('returnOnEquity', None)
+    roce = info.get('returnOnCapitalEmployed', None)
+    eps = info.get('trailingEps', None)
     de = info.get('debtToEquity', None)
-    
-    fc1, fc2 = st.columns(2)
-    with fc1:
-        pe_val, pe_badge = get_smart_badge("P/E Ratio", pe)
-        st.markdown(f"<div class='metric-card'><b>P/E रेश्यो:</b> <span class='{pe_badge}'>{pe_val}</span></div>", unsafe_allow_html=True)
-    with fc2:
-        roe_val, roe_badge = get_smart_badge("ROE", roe)
-        st.markdown(f"<div class='metric-card'><b>ROE (रिटर्न ऑन इक्विटी):</b> <span class='{roe_badge}'>{roe_val}</span></div>", unsafe_allow_html=True)
-        
-    de_val, de_badge = get_smart_badge("Debt to Equity", de)
-    st.markdown(f"<div class='metric-card'><b>डेट टू इक्विटी (कर्ज):</b> <span class='{de_badge}'>{de_val}</span></div>", unsafe_allow_html=True)
+    mcap = info.get('marketCap', None)
+    div_yield = info.get('dividendYield', None)
+    if div_yield: div_yield = div_yield * 100
+
+    metrics_list = [
+        {"Metric": "Market Capitalization", "Val": f"₹ {mcap:,}" if mcap else "N/A", "Badge": "badge-warning", "Hint": "कंपनी का कुल बाजार मूल्यांकन"},
+        {"Metric": "P/E Ratio", "Val": get_smart_badge("P/E Ratio", pe)[0], "Badge": get_smart_badge("P/E Ratio", pe)[1], "Hint": "प्रति शेयर आय के मुकाबले मूल्य (<15 आकर्षक)"},
+        {"Metric": "P/B Ratio", "Val": f"{pb:.2f}" if pb else "N/A", "Badge": "badge-warning", "Hint": "बुक वैल्यू के मुकाबले कीमत"},
+        {"Metric": "ROE", "Val": get_smart_badge("ROE", roe)[0], "Badge": get_smart_badge("ROE", roe)[1], "Hint": "इक्विटी पर रिटर्न (>15% स्वास्थ्यवध)"},
+        {"Metric": "ROCE", "Val": get_smart_badge("ROCE", roce)[0], "Badge": get_smart_badge("ROCE", roce)[1], "Hint": "नियोजित पूंजी पर रिटर्न (>15% मजबूत)"},
+        {"Metric": "EPS", "Val": f"₹ {eps:.2f}" if eps else "N/A", "Badge": "badge-warning", "Hint": "प्रति शेयर कमाई"},
+        {"Metric": "Debt to Equity", "Val": get_smart_badge("Debt to Equity", de)[0], "Badge": get_smart_badge("Debt to Equity", de)[1], "Hint": "वित्तीय जोखिम और कर्ज (<0.5 सुरक्षित)"},
+        {"Metric": "Dividend Yield", "Val": f"{div_yield:.2f}%" if div_yield else "N/A", "Badge": "badge-warning", "Hint": "वार्षिक लाभांश रिटर्न"}
+    ]
+
+    for m in metrics_list:
+        col_m1, col_m2, col_m3 = st.columns([2, 2, 3])
+        with col_m1:
+            st.markdown(f"**{m['Metric']}**")
+        with col_m2:
+            st.markdown(f"<span class='{m['Badge']}'>{m['Val']}</span>", unsafe_allow_html=True)
+        with col_m3:
+            st.caption(m['Hint'])
+        st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
 elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
-    st.subheader("🔍 स्टॉक स्कैनर और फिल्टर")
-    strategy = st.selectbox("फिल्टर चुनें", ["ब्रेकआउट / 52-वीक हाई के करीब", "कम कर्ज वाली कंपनियां"])
+    st.subheader("🔍 प्रो स्टॉक स्कैनर और स्क्रीनर्स")
+    strategy = st.selectbox(
+        "स्कैनिंग रणनीति चुनें",
+        [
+            "ब्रेकआउट / 52-वीक हाई के करीब",
+            "अंडरवैल्यूड (कम P/E + उच्च ROE)",
+            "कम कर्ज वाली सुरक्षित कंपनियां"
+        ]
+    )
     
-    if st.button("स्कैन शुरू करें", type="primary"):
-        universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS"]
-        res = []
-        for s in universe:
-            try:
-                inf = yf.Ticker(s).info
-                price = inf.get('currentPrice', 0)
-                h52 = inf.get('fiftyTwoWeekHigh', 0)
-                if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price >= 0.90 * h52:
-                    res.append({"Symbol": s, "Name": inf.get('longName'), "Price": price, "52W High": h52})
-            except:
-                pass
-        if res:
-            st.dataframe(pd.DataFrame(res), use_container_width=True)
-        else:
-            st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले।")
+    if st.button("स्कैन रन करें", type="primary"):
+        with st.spinner("बाजार के शेयरों को स्कैन किया जा रहा है..."):
+            universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS", "TATAMOTORS.NS", "ZOMATO.NS", "HFCL.NS", "SUZLON.NS"]
+            res = []
+            for s in universe:
+                try:
+                    inf = yf.Ticker(s).info
+                    price = inf.get('currentPrice', inf.get('regularMarketPrice', 0))
+                    h52 = inf.get('fiftyTwoWeekHigh', 0)
+                    pe = inf.get('trailingPE', 25)
+                    roe = inf.get('returnOnEquity', 0)
+                    if roe and roe < 1: roe = roe * 100
+                    de = inf.get('debtToEquity', 1)
+                    
+                    match = False
+                    if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price and h52 and price >= 0.90 * h52:
+                        match = True
+                    elif strategy == "अंडरवैल्यूड (कम P/E + उच्च ROE)" and pe and pe < 25 and roe and roe > 12:
+                        match = True
+                    elif strategy == "कम कर्ज वाली सुरक्षित कंपनियां" and de is not None and de < 0.5:
+                        match = True
+                        
+                    if match:
+                        res.append({
+                            "Symbol": s,
+                            "Company": inf.get('longName', s),
+                            "Price (₹)": price,
+                            "P/E": round(pe, 2) if pe else 'N/A',
+                            "ROE (%)": round(roe, 2) if roe else 'N/A',
+                            "Debt/Eq": round(de, 2) if de else 'N/A'
+                        })
+                except:
+                    continue
+            if res:
+                st.success(f"{len(res)} शेयर मिले जो इस फिल्टर से मेल खाते हैं!")
+                st.dataframe(pd.DataFrame(res), use_container_width=True)
+            else:
+                st.info("वर्तमान बैच में इस शर्त से मेल खाने वाला कोई शेयर नहीं मिला।")
 
 # ==========================================
-# DISCLAIMER FOOTER
+# LEGAL DISCLAIMER FOOTER
 # ==========================================
 st.markdown("""
 <div class="disclaimer-box">
