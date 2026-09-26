@@ -52,7 +52,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# SMART SEARCH & MAPPING DATABASE
+# ADVANCED SMART SEARCH & AUTO-CORRECT MAPPER
 # ==========================================
 
 stocks_database = {
@@ -70,6 +70,7 @@ stocks_database = {
     "MARINE": "MARINE.NS",
     "JUPITER": "JUPITERWAG.NS",
     "JUPITERWAG": "JUPITERWAG.NS",
+    "JUPITOR": "JUPITERWAG.NS",
     "TATAPOWER": "TATAPOWER.NS",
     "ADANIENT": "ADANIENT.NS"
 }
@@ -160,7 +161,7 @@ def get_smart_badge(metric_name, value):
     if metric_name == "P/E Ratio":
         if value < 15: return f"{value:.2f} (Attractive)", "badge-good"
         elif 15 <= value <= 30: return f"{value:.2f} (Fair)", "badge-warning"
-        else: return f"{value:.2f} (High)", "badge-danger"
+        else: return f"{value:.2f} (High P/E / Growth)", "badge-danger"
     elif metric_name == "ROE":
         v = value * 100 if value < 1 else value
         if v > 15: return f"{v:.2f}% (Healthy)", "badge-good"
@@ -198,7 +199,7 @@ st.markdown("---")
 # ==========================================
 # ROBUST SEARCH BAR
 # ==========================================
-search_input = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Reliance, Tata, HFCL, Marine, Jupiter):", value="RELIANCE")
+search_input = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Reliance, Tata, HFCL, Jupiter):", value="RELIANCE")
 ticker_symbol = resolve_ticker(search_input)
 
 st.markdown("---")
@@ -286,7 +287,7 @@ elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental 
 
     metrics_list = [
         {"Metric": "Market Capitalization", "Val": f"₹ {mcap:,}" if mcap else "N/A", "Badge": "badge-warning", "Hint": "कंपनी का कुल बाजार मूल्यांकन"},
-        {"Metric": "P/E Ratio", "Val": get_smart_badge("P/E Ratio", pe)[0], "Badge": get_smart_badge("P/E Ratio", pe)[1], "Hint": "प्रति शेयर आय के मुकाबले मूल्य (<15 आकर्षक)"},
+        {"Metric": "P/E Ratio", "Val": get_smart_badge("P/E Ratio", pe)[0], "Badge": get_smart_badge("P/E Ratio", pe)[1], "Hint": "प्रति शेयर आय के मुकाबले मूल्य (<15 आकर्षक, >30 हाई ग्रोथ)"},
         {"Metric": "P/B Ratio", "Val": f"{pb:.2f}" if pb else "N/A", "Badge": "badge-warning", "Hint": "बुक वैल्यू के मुकाबले कीमत"},
         {"Metric": "ROE", "Val": get_smart_badge("ROE", roe)[0], "Badge": get_smart_badge("ROE", roe)[1], "Hint": "इक्विटी पर रिटर्न (>15% स्वास्थ्यवध)"},
         {"Metric": "ROCE", "Val": get_smart_badge("ROCE", roce)[0], "Badge": get_smart_badge("ROCE", roce)[1], "Hint": "नियोजित पूंजी पर रिटर्न (>15% मजबूत)"},
@@ -312,7 +313,7 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
         [
             "ब्रेकआउट / 52-वीक हाई के करीब",
             "अंडरवैल्यूड (कम P/E + उच्च ROE)",
-            "हाई ग्रोथ / हाई CAGR स्टॉक्स",
+            "हाई ग्रोथ / हाई P/E स्टॉक्स (High P/E & Growth)",
             "कम कर्ज वाली सुरक्षित कंपनियां"
         ]
     )
@@ -330,15 +331,13 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
                     roe = inf.get('returnOnEquity', 0)
                     if roe and roe < 1: roe = roe * 100
                     de = inf.get('debtToEquity', 1)
-                    rev_growth = inf.get('revenueGrowth', 0)
-                    if rev_growth: rev_growth = rev_growth * 100
                     
                     match = False
                     if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price and h52 and price >= 0.90 * h52:
                         match = True
                     elif strategy == "अंडरवैल्यूड (कम P/E + उच्च ROE)" and pe and pe < 25 and roe and roe > 12:
                         match = True
-                    elif strategy == "हाई ग्रोथ / हाई CAGR स्टॉक्स" and rev_growth and rev_growth > 10:
+                    elif strategy == "हाई ग्रोथ / हाई P/E स्टॉक्स (High P/E & Growth)" and pe and pe > 30:
                         match = True
                     elif strategy == "कम कर्ज वाली सुरक्षित कंपनियां" and de is not None and de < 0.5:
                         match = True
