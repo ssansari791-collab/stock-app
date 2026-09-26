@@ -3,9 +3,10 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
+import mplfinance as mpf
+import matplotlib.pyplot as plt
+
 st.set_page_config(page_title="TickStox", layout="wide")
-
-
 
 # Dynamic live search function connecting directly to Yahoo Finance database for Indian stocks
 def fetch_stock_suggestions(query):
@@ -178,19 +179,32 @@ try:
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
 
-        # ==================== मूल्य और वॉल्यूम चार्ट ====================
+        # ==================== प्रोफेशनल कैंडलस्टिक चार्ट (इंडिकेटर के साथ) ====================
         st.divider()
-        st.markdown(f"### 📈 {selected_symbol} - प्राइस और वॉल्यूम चार्ट")
+        st.markdown(f"### 📈 {selected_symbol} - प्रोफेशनल कैंडलस्टिक और वॉल्यूम चार्ट")
         
-        # क्लोज प्राइस और मूविंग एवरेज का डेटा तैयार करना
-        chart_df = pd.DataFrame(index=df.index)
-        chart_df['Close Price'] = df['Close']
-        chart_df['SMA 20'] = df['Close'].rolling(window=20).mean()
-        
-        st.line_chart(chart_df)
-        
-        st.markdown("#### 📊 वॉल्यूम (Volume)")
-        st.bar_chart(df['Volume'])
+        try:
+            # डार्क थीम स्टाइल सेट करना ताकि आपके ऐप से मैच करे
+            custom_style = mpf.make_mpf_style(
+                base_mpf_style='nightclouds',
+                marketcolors=mpf.make_marketcolors(up='#26a69a', down='#ef5350', volume='in', inherit=True)
+            )
+
+            # mplfinance से कैंडलस्टिक + वॉल्यूम + 20 SMA इंडिकेटर जनरेट करना
+            fig, axlist = mpf.plot(
+                df,
+                type='candle',
+                volume=True,
+                mav=(20),  # 20 दिन का मूविंग एवरेज इंडिकेटर
+                style=custom_style,
+                returnfig=True,
+                figsize=(10, 6)
+            )
+            
+            st.pyplot(fig)
+        except Exception as chart_err:
+            st.error("चार्ट लोड करने में समस्या आ रही है।")
+            st.line_chart(df['Close'])
             
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
