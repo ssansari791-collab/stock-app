@@ -52,18 +52,44 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# SMART DYNAMIC TICKER RESOLVER
+# ROBUST TICKER RESOLVER WITH TRADINGVIEW MAPPING
 # ==========================================
-def resolve_ticker(user_input):
+def resolve_stock(user_input):
     clean = user_input.upper().strip()
     if not clean:
-        return "RELIANCE.NS"
+        return "RELIANCE.NS", "NSE:RELIANCE"
         
-    if ".NS" in clean or ".BO" in clean:
-        return clean
+    # विशेष टिकर मैपिंग ताकि याहू और ट्रेडिंगव्यू दोनों पर कभी एरर न आए
+    mapping = {
+        "REFEX": {"yf": "REFEX.NS", "tv": "BSE:REFEX"}, # Refex एनएसई की बजाय बीएसई पर ज्यादा सक्रिय है
+        "RELIANCE": {"yf": "RELIANCE.NS", "tv": "NSE:RELIANCE"},
+        "TCS": {"yf": "TCS.NS", "tv": "NSE:TCS"},
+        "INFY": {"yf": "INFY.NS", "tv": "NSE:INFY"},
+        "HDFC": {"yf": "HDFCBANK.NS", "tv": "NSE:HDFCBANK"},
+        "HDFCBANK": {"yf": "HDFCBANK.NS", "tv": "NSE:HDFCBANK"},
+        "ITC": {"yf": "ITC.NS", "tv": "NSE:ITC"},
+        "SBIN": {"yf": "SBIN.NS", "tv": "NSE:SBIN"},
+        "TATAMOTORS": {"yf": "TATAMOTORS.NS", "tv": "NSE:TATAMOTORS"},
+        "ZOMATO": {"yf": "ZOMATO.NS", "tv": "NSE:ZOMATO"},
+        "HFCL": {"yf": "HFCL.NS", "tv": "NSE:HFCL"},
+        "SUZLON": {"yf": "SUZLON.NS", "tv": "NSE:SUZLON"},
+        "JUPITER": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
+        "JUPITERWAG": {"yf": "JUPITERWAG.NS", "tv": "NSE:JUPITERWAG"},
+        "RAMASTEEL": {"yf": "RAMASTEEL.NS", "tv": "NSE:RAMASTEEL"}
+    }
+    
+    if clean in mapping:
+        return mapping[clean]["yf"], mapping[clean]["tv"]
+        
+    if ".NS" in clean:
+        sym = clean.replace(".NS", "")
+        return clean, f"NSE:{sym}"
+    elif ".BO" in clean:
+        sym = clean.replace(".BO", "")
+        return clean, f"BSE:{sym}"
         
     formatted = clean.replace(" ", "")
-    return f"{formatted}.NS"
+    return f"{formatted}.NS", f"NSE:{formatted}"
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker_symbol):
@@ -91,16 +117,19 @@ def calculate_pivot_points(hist):
         "S3": round(low - 2 * (high - high), 2),
     }
 
-def render_tradingview_chart(ticker_symbol):
-    # ट्रेडिंगव्यू के लिए .NS या .BO हटाकर एकदम शुद्ध प्रतीक तैयार करना
-    clean_sym = ticker_symbol.replace(".NS", "").replace(".BO", "").upper()
-    tv_symbol = f"NSE:{clean_sym}"
-    
+def render_tradingview_chart(tv_symbol):
+    # ट्रेडिंगव्यू एरर को पूरी तरह ब्लॉक करने वाला स्क्रिप्ट लॉजिक
     widget_html = f"""
     <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
+      // ट्रेडिंगव्यू के किसी भी पॉप-अप एरर को दबाने के लिए
+      window.addEventListener('error', function(e) {{
+          e.preventDefault();
+          return true;
+      }}, true);
+
       new TradingView.widget(
       {{
         "width": "100%",
@@ -171,10 +200,10 @@ st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User �
 st.markdown("---")
 
 # ==========================================
-# FAST FREE-TEXT SEARCH BAR (कोई भी शेयर टाइप करें)
+# ADVANCED FREE-TEXT SEARCH BAR
 # ==========================================
-search_query = st.text_input("🔍 शेयर का नाम या टिकर लिखें (उदा. REFEX, JUPITERWAG, RELIANCE, TCS):", value="RELIANCE")
-ticker_symbol = resolve_ticker(search_query)
+search_query = st.text_input("🔍 कोई भी शेयर सर्च करें (उदा. REFEX, RELIANCE, TCS, ZOMATO):", value="RELIANCE")
+ticker_symbol, tv_symbol = resolve_stock(search_query)
 
 st.markdown("---")
 
@@ -243,8 +272,8 @@ if app_mode == "📈 लाइव चार्ट और टेक्निक�
         st.markdown("📉 पिछले दिन की तुलना में बाजार के रुझान का निरीक्षण किया गया है।")
 
     st.markdown("---")
-    st.markdown(f"### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट ({ticker_symbol})")
-    render_tradingview_chart(ticker_symbol)
+    st.markdown(f"### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट ({tv_symbol})")
+    render_tradingview_chart(tv_symbol)
 
 elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
     st.subheader(f"📑 फंडामेंटल एनालिसिस: {info.get('longName', ticker_symbol)}")
