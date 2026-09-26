@@ -5,28 +5,34 @@ import numpy as np
 import streamlit.components.v1 as components
 
 # ==========================================
-# PAGE CONFIGURATION & PREMIUM CSS
+# PAGE CONFIGURATION & LAYOUT FIX
 # ==========================================
 st.set_page_config(
     page_title="TickStock | Pro Stock Analysis",
     page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Custom High-End Styling for Professional App Look
+# CSS to completely hide Streamlit sidebar and force top-to-bottom layout
 st.markdown("""
     <style>
+    /* Forcefully hide sidebar elements */
+    [data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {
+        display: none !important;
+        width: 0px !important;
+    }
+    
+    /* Main app styling */
     .main { background-color: #0f172a; color: #f8fafc; }
     .stApp { background-color: #0f172a; }
     
     .metric-card {
         background-color: #1e293b;
         border: 1px solid #334155;
-        padding: 20px;
+        padding: 15px;
         border-radius: 12px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
     
     .badge-good { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
@@ -48,7 +54,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS (FIXED CACHING)
+# HELPER FUNCTIONS
 # ==========================================
 
 @st.cache_data(ttl=3600)
@@ -78,18 +84,19 @@ def calculate_pivot_points(hist):
     }
 
 def render_tradingview_chart(symbol):
+    # Ensure proper Exchange prefix to prevent TradingView popup errors
     clean_sym = symbol.replace(".NS", "").upper()
     tv_symbol = f"NSE:{clean_sym}"
     
     widget_html = f"""
-    <div class="tradingview-widget-container" style="height:550px;width:100%">
+    <div class="tradingview-widget-container" style="height:500px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget(
       {{
         "width": "100%",
-        "height": "550",
+        "height": "500",
         "symbol": "{tv_symbol}",
         "interval": "D",
         "timezone": "Asia/Kolkata",
@@ -98,7 +105,7 @@ def render_tradingview_chart(symbol):
         "locale": "in",
         "toolbar_bg": "#1e293b",
         "enable_publishing": false,
-        "allow_symbol_change": true,
+        "allow_symbol_change": false,
         "details": false,
         "hotlist": false,
         "calendar": false,
@@ -112,7 +119,7 @@ def render_tradingview_chart(symbol):
       </script>
     </div>
     """
-    components.html(widget_html, height=560, scrolling=False)
+    components.html(widget_html, height=510, scrolling=False)
 
 def get_smart_badge(metric_name, value):
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -133,81 +140,90 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# SIDEBAR - CLEAN & PROFESSIONAL UI
+# TOP-TO-BOTTOM FULL SCREEN LAYOUT
 # ==========================================
-st.sidebar.markdown("## ⚡ TickStock Pro")
-st.sidebar.markdown("---")
+st.markdown("## ⚡ TickStock Pro Portal")
+st.markdown("---")
 
-app_mode = st.sidebar.radio("Navigation", ["📈 Live Chart & Technicals", "📑 Fundamental Health", "🔍 Smart Scanners"])
+# Top Search Controls
+col_s1, col_s2 = st.columns(2)
+with col_s1:
+    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
+    selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
+with col_s2:
+    custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS")
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔍 Stock Search")
-popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS"]
-selected_ticker = st.sidebar.selectbox("Choose Popular Stock", popular_stocks)
-
-custom_input = st.sidebar.text_input("Or enter Ticker (e.g. AAPL, RELIANCE.NS)")
 ticker_symbol = custom_input.upper().strip() if custom_input else selected_ticker
+
+st.markdown("---")
+
+# Navigation Menu at the Top
+app_mode = st.radio(
+    "मेनु चुनें (Navigation)", 
+    ["📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)", "📑 फंडामेंटल हेल्थ (Fundamental Health)", "🔍 स्मार्ट स्कैनर (Smart Scanners)"], 
+    horizontal=True
+)
+
+st.markdown("---")
 
 info, hist_data = fetch_stock_data(ticker_symbol)
 
 # ==========================================
-# MAIN APP VIEWS
+# MAIN VIEWS
 # ==========================================
 
-if app_mode == "📈 Live Chart & Technicals":
-    st.title("📈 Advanced Live Market Portal")
-    comp_name = info.get('longName', ticker_symbol)
+if app_mode == "📈 लाइव चार्ट और टेक्निकल (Live Chart & Technicals)":
+    st.subheader(f"विश्लेषण (Analyzing): {info.get('longName', ticker_symbol)}")
     curr_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
     
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"<div class='metric-card'><h4>Stock</h4><h3>{comp_name}</h3></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div class='metric-card'><h4>Live Price</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"<div class='metric-card'><h4>52W High</h4><h3>₹ {info.get('fiftyTwoWeekHigh', 'N/A')}</h3></div>", unsafe_allow_html=True)
-    with col4:
-        st.markdown(f"<div class='metric-card'><h4>52W Low</h4><h3>₹ {info.get('fiftyTwoWeekLow', 'N/A')}</h3></div>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f"<div class='metric-card'><h4>लाइव भाव (Price)</h4><h3>₹ {curr_price}</h3></div>", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"<div class='metric-card'><h4>52W हाई (High)</h4><h3>₹ {info.get('fiftyTwoWeekHigh', 'N/A')}</h3></div>", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"<div class='metric-card'><h4>52W लो (Low)</h4><h3>₹ {info.get('fiftyTwoWeekLow', 'N/A')}</h3></div>", unsafe_allow_html=True)
+    with c4:
+        mcap = info.get('marketCap', 0)
+        st.markdown(f"<div class='metric-card'><h4>मार्केट कैप</h4><h3>₹ {mcap:,}</h3></div>" if mcap else "<div class='metric-card'><h4>मार्केट कैप</h4><h3>N/A</h3></div>", unsafe_allow_html=True)
 
-    st.markdown("### 📊 TradingView Real-Time Pro Chart")
+    st.markdown("### 📊 ट्रेडिंगव्यू रियल-टाइम चार्ट")
     render_tradingview_chart(ticker_symbol)
     
-    st.markdown("### 📐 Dynamic Support & Resistance (Pivot Points)")
+    st.markdown("### 📐 सपोर्ट और रेजिस्टेंस (Pivot Points)")
     pivots = calculate_pivot_points(hist_data)
     if pivots:
         p1, p2, p3 = st.columns(3)
         with p1:
-            st.markdown(f"<div class='metric-card'><b>Pivot Point:</b> {pivots['Pivot']}<br><b>Resistance 1:</b> {pivots['R1']}<br><b>Support 1:</b> {pivots['S1']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><b>पिवट (Pivot):</b> {pivots['Pivot']}<br><b>सपोर्ट 1:</b> {pivots['S1']}</div>", unsafe_allow_html=True)
         with p2:
-            st.markdown(f"<div class='metric-card'><b>Resistance 2:</b> {pivots['R2']}<br><b>Support 2:</b> {pivots['S2']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><b>रेजिस्टेंस 1:</b> {pivots['R1']}<br><b>सपोर्ट 2:</b> {pivots['S2']}</div>", unsafe_allow_html=True)
         with p3:
-            st.markdown(f"<div class='metric-card'><b>Resistance 3:</b> {pivots['R3']}<br><b>Support 3:</b> {pivots['S3']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><b>रेजिस्टेंस 2:</b> {pivots['R2']}<br><b>रेजिस्टेंस 3:</b> {pivots['R3']}</div>", unsafe_allow_html=True)
 
-elif app_mode == "📑 Fundamental Health":
-    st.title("📑 Fundamental Analysis & Smart Health")
-    st.subheader(info.get('longName', ticker_symbol))
+elif app_mode == "📑 फंडामेंटल हेल्थ (Fundamental Health)":
+    st.subheader(f"कंपनी की वित्तीय सेहत: {info.get('longName', ticker_symbol)}")
     
     pe = info.get('trailingPE', None)
     roe = info.get('returnOnEquity', None)
     de = info.get('debtToEquity', None)
-    mcap = info.get('marketCap', None)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"<div class='metric-card'><b>Market Cap:</b> ₹ {mcap:,}</div>" if mcap else "<div class='metric-card'><b>Market Cap:</b> N/A</div>", unsafe_allow_html=True)
+    fc1, fc2 = st.columns(2)
+    with fc1:
         pe_val, pe_badge = get_smart_badge("P/E Ratio", pe)
-        st.markdown(f"<div class='metric-card'><b>P/E Ratio:</b> <span class='{pe_badge}'>{pe_val}</span></div>", unsafe_allow_html=True)
-    with col2:
+        st.markdown(f"<div class='metric-card'><b>P/E रेश्यो:</b> <span class='{pe_badge}'>{pe_val}</span></div>", unsafe_allow_html=True)
+    with fc2:
         roe_val, roe_badge = get_smart_badge("ROE", roe)
-        st.markdown(f"<div class='metric-card'><b>Return on Equity (ROE):</b> <span class='{roe_badge}'>{roe_val}</span></div>", unsafe_allow_html=True)
-        de_val, de_badge = get_smart_badge("Debt to Equity", de)
-        st.markdown(f"<div class='metric-card'><b>Debt to Equity:</b> <span class='{de_badge}'>{de_val}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><b>ROE (रिटर्न ऑन इक्विटी):</b> <span class='{roe_badge}'>{roe_val}</span></div>", unsafe_allow_html=True)
+        
+    de_val, de_badge = get_smart_badge("Debt to Equity", de)
+    st.markdown(f"<div class='metric-card'><b>डेट टू इक्विटी (कर्ज):</b> <span class='{de_badge}'>{de_val}</span></div>", unsafe_allow_html=True)
 
-elif app_mode == "🔍 Smart Scanners":
-    st.title("🔍 Pro Stock Scanners")
-    strategy = st.selectbox("Select Screening Filter", ["Breakout / Near 52-Week High", "Undervalued (Low P/E + High ROE)", "Low Debt Companies"])
+elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)":
+    st.subheader("🔍 स्टॉक स्कैनर और फिल्टर")
+    strategy = st.selectbox("फिल्टर चुनें", ["ब्रेकआउट / 52-वीक हाई के करीब", "कम कर्ज वाली कंपनियां"])
     
-    if st.button("Run Instant Scan", type="primary"):
+    if st.button("स्कैन शुरू करें", type="primary"):
         universe = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "SBIN.NS"]
         res = []
         for s in universe:
@@ -215,23 +231,24 @@ elif app_mode == "🔍 Smart Scanners":
                 inf = yf.Ticker(s).info
                 price = inf.get('currentPrice', 0)
                 h52 = inf.get('fiftyTwoWeekHigh', 0)
-                if strategy == "Breakout / Near 52-Week High" and price >= 0.90 * h52:
+                if strategy == "ब्रेकआउट / 52-वीक हाई के करीब" and price >= 0.90 * h52:
                     res.append({"Symbol": s, "Name": inf.get('longName'), "Price": price, "52W High": h52})
             except:
                 pass
         if res:
             st.dataframe(pd.DataFrame(res), use_container_width=True)
         else:
-            st.info("No matching stocks found in current scan batch.")
+            st.info("वर्तमान में इस फिल्टर से मेल खाते शेयर नहीं मिले।")
 
 # ==========================================
 # DISCLAIMER FOOTER
 # ==========================================
 st.markdown("""
-<div class="disclaimer-box">
-  <b>⚠️ Legal Notice:</b> TickStock is an educational and informational analytics portal. We are <b>not a SEBI-registered research analyst or investment advisor</b>. Consult a certified financial expert before investing.
+<div class="disclaimer-Box">
+  <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
