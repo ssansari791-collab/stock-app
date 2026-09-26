@@ -33,43 +33,51 @@ def fetch_stock_suggestions(query):
     except:
         return []
 
-# ==================== मुख्य स्क्रीन पर स्मार्ट स्टॉक श्रेणियां (Smart Screeners on Main Screen) ====================
-st.markdown("### 🔍 स्टॉक श्रेणियां और सर्च (Smart Categories)")
+# ==================== मुख्य स्क्रीन पर स्मार्ट श्रेणियां और सर्च (Smart Categories & Search) ====================
+st.markdown("### 🔍 स्मार्ट स्टॉक श्रेणियां और सर्च (Smart Screener & Search)")
+
 col_cat1, col_cat2 = st.columns(2)
 
 with col_cat1:
     category_choice = st.selectbox(
-        "लोकप्रिय श्रेणियां चुनें:", 
-        ["--- मैन्युअल सर्च करें ---", "🚀 हाई ग्रोथ / मोमेंटम (High Growth)", "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)", "💰 उच्च लाभांश वाले (High Dividend Yield)"]
+        "लोकप्रिय थीम / श्रेणियां चुनें:", 
+        [
+            "--- अपनी पसंद का स्टॉक टाइप करें ---", 
+            "🚀 हाई ग्रोथ / मोमेंटम (High Growth)", 
+            "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)", 
+            "💰 उच्च लाभांश वाले (High Dividend Yield)"
+        ]
     )
 
-# व्यापक और बड़ी सूची (Expanded Stock Categories)
+# आधुनिक और ट्रेंडिंग शेयरों की बड़ी और व्यापक सूचियां (Expanded Modern Categories)
 screener_stocks = {
     "🚀 हाई ग्रोथ / मोमेंटम (High Growth)": [
         "ZOMATO.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "HAL.NS", "COCHINSHIP.NS", 
-        "TITAN.NS", "POLYCAB.NS", "DIXON.NS", "TATACOMM.NS", "PERSISTENT.NS", "LODHA.NS"
+        "TITAN.NS", "POLYCAB.NS", "DIXON.NS", "TATACOMM.NS", "PERSISTENT.NS", "LODHA.NS",
+        "CDSL.NS", "ANGELONE.NS", "MAZDOCK.NS", "IRFC.NS", "KPITTECH.NS", "SONACOMS.NS"
     ],
     "🏛️ मजबूत फंडामेंटल (Strong Fundamentals)": [
         "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS", 
-        "ICICIBANK.NS", "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "BAJFINANCE.NS", "KOTAKBANK.NS"
+        "ICICIBANK.NS", "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "BAJFINANCE.NS", "KOTAKBANK.NS",
+        "AXISBANK.NS", "SUNPHARMA.NS", "TITAN.NS", "ASIANPAINT.NS", "MARUTI.NS", "NESTLEIND.NS"
     ],
     "💰 उच्च लाभांश वाले (High Dividend Yield)": [
         "COALINDIA.NS", "VEDL.NS", "ONGC.NS", "IOC.NS", "POWERGRID.NS", "NTPC.NS", 
-        "BPCL.NS", "HINDPETRO.NS", "GAIL.NS", "ITC.NS", "HCLTECH.NS", "TCS.NS"
+        "BPCL.NS", "HINDPETRO.NS", "GAIL.NS", "ITC.NS", "HCLTECH.NS", "TCS.NS",
+        "PETRONET.NS", "NHPC.NS", "SJVN.NS", "OIL.NS", "HINZINC.NS", "NALCO.NS"
     ]
 }
 
 default_query = "RELIANCE"
 with col_cat2:
-    if category_choice != "--- मैन्युअल सर्च करें ---":
+    if category_choice != "--- अपनी पसंद का स्टॉक टाइप करें ---":
         selected_category_list = screener_stocks[category_choice]
-        # सुंदर फॉर्मेट में नाम दिखाने के लिए मेपिंग
         display_names = [s.replace(".NS", "") for s in selected_category_list]
-        chosen_cat_display = st.selectbox("सूची से चुनें:", display_names)
+        chosen_cat_display = st.selectbox("या सूची से सीधा चुनें:", display_names)
         default_query = chosen_cat_display
 
-# User Input Search Box
-user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Aegis, Tata, Marine, Reliance):", default_query)
+# User Input Search Box (आप यहाँ कोई भी नया या पुराना स्टॉक खुद भी टाइप कर सकते हैं)
+user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Zomato, Tata, JFS, Mazagon):", default_query)
 
 selected_symbol = "RELIANCE.NS"
 
