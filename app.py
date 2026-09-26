@@ -5,7 +5,7 @@ import urllib.request
 import json
 st.set_page_config(page_title="TickStox", layout="wide")
 
-# 1. आपकी ओरिजिनल और सबसे सटीक लाइव सर्च फंक्शन (Original Live Search API)
+# 1. आपकी ओरिजिनल और सबसे दमदार लाइव सर्च फंक्शन
 def fetch_stock_suggestions(query):
     try:
         encoded_query = urllib.parse.quote(query)
@@ -24,7 +24,6 @@ def fetch_stock_suggestions(query):
                 short_name = q.get('shortname', q.get('longname', symbol))
                 exchange = q.get('exchange', '')
                 
-                # Filter for Indian markets (.NS for NSE, .BO for BSE)
                 if symbol.endswith('.NS') or symbol.endswith('.BO') or exchange in ['NSI', 'BSE', 'NSE']:
                     stock_options.append({
                         'display': f"{short_name} ({symbol})",
@@ -34,29 +33,48 @@ def fetch_stock_suggestions(query):
     except:
         return []
 
-# 2. ओरिजिनल यूजर इनपुट और सर्च बॉक्स
-user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Texmaco, Reliance, Zomato):", "RELIANCE")
+st.markdown("### ⚡ TickStox - प्रोफेशनल स्टॉक एनालिटिक्स")
 
-selected_symbol = "RELIANCE.NS"
+# सर्च और प्रीसेट श्रेणियों के लिए अलग विकल्प (मोड)
+screener_mode = st.radio(
+    "🔍 मोड चुनें:",
+    ["सामान्य लाइव सर्च (Manual Search)", "🔥 हाई P/E / मोमेंटम स्टॉक सूची", "🏛️ मजबूत फंडामेंटल स्टॉक सूची"],
+    horizontal=True
+)
 
-if user_query:
-    clean_query = user_query.strip()
+default_symbol = "RELIANCE.NS"
+
+if screener_mode == "🔥 हाई P/E / मोमेंटम स्टॉक सूची":
+    high_pe_list = ["TRENT.NS", "ZOMATO.NS", "DIXON.NS", "POLYCAB.NS", "HAL.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "COCHINSHIP.NS"]
+    chosen_preset = st.selectbox("हाई P/E स्टॉक चुनें:", high_pe_list)
+    default_symbol = chosen_preset
+elif screener_mode == "🏛️ मजबूत फंडामेंटल स्टॉक सूची":
+    strong_fund_list = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS", "ICICIBANK.NS", "SBIN.NS"]
+    chosen_preset = st.selectbox("मजबूत फंडामेंटल स्टॉक चुनें:", strong_fund_list)
+    default_symbol = chosen_preset
+
+# 2. ओरिजिनल लाइव सर्च बॉक्स (जब मैनुअल सर्च चुना गया हो)
+if screener_mode == "सामान्य लाइव सर्च (Manual Search)":
+    user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Zomato, Tata, Reliance):", "RELIANCE")
+    selected_symbol = "RELIANCE.NS"
     
-    # Live search from internet
-    with st.spinner("🔍 इंटरनेट से शेयर खोजे जा रहे हैं..."):
-        suggestions = fetch_stock_suggestions(clean_query)
-    
-    if suggestions:
-        options_map = {item['display']: item['symbol'] for item in suggestions}
-        chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची (सूची से चुनें):", list(options_map.keys()))
-        selected_symbol = options_map[chosen_display]
-    else:
-        # Direct fallback
-        upper_q = clean_query.upper().replace(" ", "")
-        if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
-            selected_symbol = upper_q + ".NS"
+    if user_query:
+        clean_query = user_query.strip()
+        with st.spinner("🔍 इंटरनेट से शेयर खोजे जा रहे हैं..."):
+            suggestions = fetch_stock_suggestions(clean_query)
+        
+        if suggestions:
+            options_map = {item['display']: item['symbol'] for item in suggestions}
+            chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची (सूची से चुनें):", list(options_map.keys()))
+            selected_symbol = options_map[chosen_display]
         else:
-            selected_symbol = upper_q
+            upper_q = clean_query.upper().replace(" ", "")
+            if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
+                selected_symbol = upper_q + ".NS"
+            else:
+                selected_symbol = upper_q
+else:
+    selected_symbol = default_symbol
 
 st.write("---")
 
@@ -66,7 +84,6 @@ try:
     df = stock.history(period="6mo")
     
     if df.empty:
-        # Try BSE (.BO) if NSE (.NS) fails
         if selected_symbol.endswith(".NS"):
             bse_symbol = selected_symbol.replace(".NS", ".BO")
             stock = yf.Ticker(bse_symbol)
@@ -98,7 +115,7 @@ try:
         r3 = high_price + 2 * (pivot - low_price)
         s3 = low_price - 2 * (pivot - low_price)
         
-        # Display Metrics (Market Summary)
+        # Display Metrics
         st.subheader(f"📊 {selected_symbol} - बाजार सारांश")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
@@ -138,44 +155,43 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल और सटीक वित्तीय रेश्यो ====================
+        # ==================== फंडामेंटल डेटा और सटीक रेश्यो ====================
         st.divider()
-        st.markdown("### 🏢 फंडामेंटल डेटा और रेश्यो (Fundamentals)")
+        st.markdown("### 🏢 फंडामेंटल डेटा और वित्तीय रेश्यो (Fundamentals)")
         try:
             info = stock.info
             
-            # Market Cap
             market_cap = info.get('marketCap', 'N/A')
             market_cap_str = f"₹{market_cap / 10000000:,.2f} Cr" if market_cap != 'N/A' else "उपलब्ध नहीं"
 
-            # PE & PB
             pe_ratio = info.get('trailingPE', 'N/A')
+            ind_pe = info.get('industryPE', 'N/A')
             pb_ratio = info.get('priceToBook', 'N/A')
             eps = info.get('trailingEps', 'N/A')
             
-            # Dividend Yield
             div_yield = info.get('dividendYield', None)
             div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/A"
             
-            # ROE (Correct percentage conversion)
             roe = info.get('returnOnEquity', None)
             roe_str = f"{roe * 100:.2f}%" if roe else "N/A"
+
+            roce = info.get('returnOnCapitalEmployed', None)
+            roce_str = f"{roce * 100:.2f}%" if roce else "N/A"
             
-            # 52 Week High / Low
             high_52 = info.get('fiftyTwoWeekHigh', 'N/A')
             low_52 = info.get('fiftyTwoWeekLow', 'N/A')
 
-            # साफ़-सुथरे लेआउट में दिखाना
             f1, f2, f3, f4 = st.columns(4)
             f1.metric("मार्केट कैप", market_cap_str)
-            f2.metric("P/E रेश्यो (TTM)", f"{pe_ratio:.2f}" if isinstance(pe_ratio, (int, float)) else pe_ratio)
-            f3.metric("P/B रेश्यो", f"{pb_ratio:.2f}" if isinstance(pb_ratio, (int, float)) else pb_ratio)
-            f4.metric("EPS (TTM)", f"₹{eps:.2f}" if isinstance(eps, (int, float)) else eps)
+            f2.metric("स्टॉक P/E", f"{pe_ratio:.2f}" if isinstance(pe_ratio, (int, float)) else pe_ratio)
+            f3.metric("इंडस्ट्री P/E", f"{ind_pe:.2f}" if isinstance(ind_pe, (int, float)) else "उपलब्ध नहीं")
+            f4.metric("P/B रेश्यो", f"{pb_ratio:.2f}" if isinstance(pb_ratio, (int, float)) else pb_ratio)
 
-            f5, f6, f7 = st.columns(3)
-            f5.metric("ROE (रिटर्न ऑन इक्विटी)", roe_str)
-            f6.metric("डिविडेंड यील्ड", div_yield_str)
-            f7.metric("52 वीक हाई / लो", f"₹{high_52} / ₹{low_52}" if high_52 != 'N/A' else "उपलब्ध नहीं")
+            f5, f6, f7, f8 = st.columns(4)
+            f5.metric("ROE", roe_str)
+            f6.metric("ROCE", roce_str)
+            f7.metric("EPS (TTM)", f"₹{eps:.2f}" if isinstance(eps, (int, float)) else eps)
+            f8.metric("डिविडेंड यील्ड", div_yield_str)
 
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
