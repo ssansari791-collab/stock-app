@@ -3,8 +3,8 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
-import mplfinance as mpf
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 st.set_page_config(page_title="TickStox", layout="wide")
 
@@ -179,31 +179,58 @@ try:
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
 
-        # ==================== प्रोफेशनल कैंडलस्टिक चार्ट (इंडिकेटर के साथ) ====================
+        # ==================== प्रोफेशनल कैंडलस्टिक और इंडिकेटर चार्ट ====================
         st.divider()
-        st.markdown(f"### 📈 {selected_symbol} - प्रोफेशनल कैंडलस्टिक और वॉल्यूम चार्ट")
+        st.markdown(f"### 📈 {selected_symbol} - प्रो कैंडलस्टिक चार्ट (Candlestick & SMA 20)")
         
         try:
-            # डार्क थीम स्टाइल सेट करना ताकि आपके ऐप से मैच करे
-            custom_style = mpf.make_mpf_style(
-                base_mpf_style='nightclouds',
-                marketcolors=mpf.make_marketcolors(up='#26a69a', down='#ef5350', volume='in', inherit=True)
+            # 20 दिन का मूविंग एवरेज (SMA 20) इंडिकेटर कैलकुलेट कर रहे हैं
+            df['SMA20'] = df['Close'].rolling(window=20).mean()
+
+            # Plotly सबप्लॉट: ऊपर कैंडलस्टिक, नीचे वॉल्यूम
+            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                                vertical_spacing=0.03, row_heights=[0.75, 0.25])
+
+            # 1. Candlestick Trace
+            fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name='Candles',
+                increasing_line_color='#26a69a', 
+                decreasing_line_color='#ef5350'
+            ), row=1, col=1)
+
+            # 2. Moving Average Indicator (SMA 20)
+            fig.add_trace(go.Scatter(
+                x=df.index, y=df['SMA20'], 
+                line=dict(color='#ff9800', width=1.5), 
+                name='SMA 20'
+            ), row=1, col=1)
+
+            # 3. Volume Bar Trace
+            colors = ['#26a69a' if row['Close'] >= row['Open'] else '#ef5350' for index, row in df.iterrows()]
+            fig.add_trace(go.Bar(
+                x=df.index, y=df['Volume'], 
+                marker_color=colors, 
+                name='Volume'
+            ), row=2, col=1)
+
+            # Layout Styling (Dark Theme match)
+            fig.update_layout(
+                template='plotly_dark',
+                height=520,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis_rangeslider_visible=False,
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
 
-            # mplfinance से कैंडलस्टिक + वॉल्यूम + 20 SMA इंडिकेटर जनरेट करना
-            fig, axlist = mpf.plot(
-                df,
-                type='candle',
-                volume=True,
-                mav=(20),  # 20 दिन का मूविंग एवरेज इंडिकेटर
-                style=custom_style,
-                returnfig=True,
-                figsize=(10, 6)
-            )
+            st.plotly_chart(fig, use_container_width=True)
             
-            st.pyplot(fig)
         except Exception as chart_err:
-            st.error("चार्ट लोड करने में समस्या आ रही है।")
             st.line_chart(df['Close'])
             
 except Exception as e:
