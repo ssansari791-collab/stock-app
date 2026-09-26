@@ -138,16 +138,14 @@ def get_smart_badge(metric_name, value):
     return str(value), "badge-warning"
 
 # ==========================================
-# PERFECT CORNER-TO-CORNER TOP ROW
+# STRICT CORNER-TO-CORNER TOP BAR (SINGLE ROW)
 # ==========================================
-col_left_logo, col_right_settings = st.columns([6, 1])
+top_c1, top_c2 = st.columns([10, 1])
 
-with col_left_logo:
-    # बिल्कुल बाएं कोने में TickStock का लोगो/नाम
+with top_c1:
     st.markdown("<h3 style='margin:0; padding:0; color:#38bdf8;'>🟢 TickStock</h3>", unsafe_allow_html=True)
 
-with col_right_settings:
-    # बिल्कुल दाएं कोने में सेटिंग्स/प्रोफाइल का आइकॉन
+with top_c2:
     with st.popover("⚙️"):
         st.write("### यूजर प्रोफाइल")
         uploaded_file = st.file_uploader("फोटो लगाएं", type=["jpg", "png", "jpeg"])
@@ -159,7 +157,7 @@ with col_right_settings:
         if st.button("शेयर ऐप"):
             st.success("लिंक कॉपी हो गया है!")
 
-# वेलकम ग्रीटिंग और सर्च बार बिल्कुल ऊपर से शुरू
+# वेलकम ग्रीटिंग और सर्च बार
 st.markdown("<h4 style='margin: 10px 0 10px 0; color: #f8fafc;'>Welcome, User 👋</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
