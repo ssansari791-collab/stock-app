@@ -145,7 +145,7 @@ st.markdown("---")
 
 col_s1, col_s2 = st.columns(2)
 with col_s1:
-    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "SBIN.NS", "MARINE.NS", "ADANIENT.NS", "ITC.NS"]
+    popular_stocks = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "TATAMOTORS.NS", "MARINE.NS", "ZOMATO.NS", "SUZLON.NS", "RVNL.NS"]
     selected_ticker = st.selectbox("🔍 लोकप्रिय शेयर चुनें (Popular Stock)", popular_stocks)
 with col_s2:
     custom_input = st.text_input("या शेयर का टिकर लिखें (Custom Ticker)", placeholder="e.g. RELIANCE.NS, ZOMATO.NS")
@@ -229,15 +229,16 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
     )
     
     if st.button("🚀 स्कैन शुरू करें (Run Scan)", type="primary"):
-        # Comprehensive reliable NSE stock pool
+        # Expanded and updated dynamic stock universe including trending, midcap, smallcap, and popular stocks
         universe = [
             "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", 
             "TATAMOTORS.NS", "SBIN.NS", "ICICIBANK.NS", "BHARTIARTL.NS", 
-            "HINDUNILVR.NS", "LT.NS", "BAJFINANCE.NS", "SUNPHARMA.NS", 
-            "AXISBANK.NS", "WIPRO.NS", "MARUTI.NS", "TITAN.NS", "POWERGRID.NS"
+            "MARINE.NS", "ZOMATO.NS", "SUZLON.NS", "RVNL.NS", "IRFC.NS",
+            "NYKAA.NS", "TRIDENT.NS", "JPPOWER.NS", "YESBANK.NS", "IDEA.NS",
+            "ADANIENT.NS", "HAL.NS", "BEL.NS", "COCHINSHIP.NS", "TITAN.NS"
         ]
 
-        with st.spinner("बाजार से लाइव डेटा स्कैन किया जा रहा है..."):
+        with st.spinner("बाजार से नए और लाइव शेयर स्कैन किए जा रहे हैं..."):
             res = []
             for s in universe:
                 try:
@@ -255,17 +256,18 @@ elif app_mode == "🔍 स्मार्ट स्कैनर (Smart Scanners)
                         de = 0
 
                     match = False
+                    # Improved Breakout condition (Price near or crossing 85% of 52W High)
                     if strategy == "ब्रेकआउट / 52-वीक हाई के करीब (Breakout Stocks)":
-                        if h52 and price and (price >= 0.80 * h52):
+                        if h52 and price and (price >= 0.85 * h52):
                             match = True
                     elif strategy == "कम कर्ज वाली कंपनियां (Low Debt Companies)":
-                        if de < 1.0:
+                        if de < 0.5:
                             match = True
                     elif strategy == "अंडरवैल्यूड स्टॉक्स - कम P/E + हाई ROE (Undervalued Stocks)":
-                        if pe and pe < 30 and roe and roe > 8:
+                        if pe and pe < 25 and roe and roe > 10:
                             match = True
                     elif strategy == "हाई ग्रोथ / मजबूत रिटर्न वाली कंपनियां (High Growth)":
-                        if roe and roe > 12:
+                        if roe and roe > 15:
                             match = True
 
                     if match:
@@ -295,4 +297,3 @@ st.markdown("""
   <b>⚠️ कानूनी सूचना (Disclaimer):</b> TickStock केवल शैक्षिक और सूचना के उद्देश्य से बनाया गया पोर्टल है। हम SEBI-पंजीकृत सलाहकार नहीं हैं। निवेश करने से पहले अपने वित्तीय सलाहकार से सलाह जरूर लें।
 </div>
 """, unsafe_allow_html=True)
-
