@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
+import streamlit.components.v1 as components
+
 st.set_page_config(page_title="TickStox", layout="wide")
 
 # 1. आपकी ओरिजिनल और सबसे दमदार लाइव सर्च फंक्शन
