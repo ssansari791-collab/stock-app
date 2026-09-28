@@ -3,18 +3,23 @@ import yfinance as yf
 import pandas as pd
 import urllib.request
 import json
-import streamlit.components.v1 as components
+import urllib.parse
 
 st.set_page_config(page_title="TickStox", layout="wide")
 
-# 1. आपकी ओरिजिनल और सबसे दमदार लाइव सर्च फंक्शन
+# 1. सुरक्षित और ऑप्टिमाइज़्ड सर्च फंक्शन (Proxy/Header Safe)
 def fetch_stock_suggestions(query):
     try:
         encoded_query = urllib.parse.quote(query)
+        # Yahoo Finance का स्टैंडर्ड सर्च एंडपॉइंट
         url = f"https://query1.finance.yahoo.com/v1/finance/search?q={encoded_query}&quotesCount=15&newsCount=0&enableFuzzyQuery=true"
+        
+        # प्रॉपर यूजर-एजेंट हेडर के साथ रिक्वेस्ट भेजना ताकि सर्वर ब्लॉक न करे
         req = urllib.request.Request(
             url, 
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
         )
         with urllib.request.urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode())
@@ -32,7 +37,7 @@ def fetch_stock_suggestions(query):
                         'symbol': symbol
                     })
             return stock_options
-    except:
+    except Exception as e:
         return []
 
 st.markdown("### ⚡ TickStox - प्रोफेशनल स्टॉक एनालिटिक्स")
@@ -55,7 +60,7 @@ elif screener_mode == "🏛️ मजबूत फंडामेंटल स�
     chosen_preset = st.selectbox("मजबूत फंडामेंटल स्टॉक चुनें:", strong_fund_list)
     default_symbol = chosen_preset
 
-# 2. ओरिजिनल लाइव सर्च बॉक्स (जब मैनुअल सर्च चुना गया हो)
+# 2. लाइव सर्च बॉक्स
 if screener_mode == "सामान्य लाइव सर्च (Manual Search)":
     user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Zomato, Tata, Reliance):", "RELIANCE")
     selected_symbol = "RELIANCE.NS"
@@ -80,7 +85,7 @@ else:
 
 st.write("---")
 
-# Fetch and display live market data and pivot points
+# लाइव मार्केट डेटा और पिवट पॉइंट्स फेच करना
 try:
     stock = yf.Ticker(selected_symbol)
     df = stock.history(period="6mo")
@@ -108,7 +113,7 @@ try:
         change = close_price - prev_close
         change_pct = (change / prev_close) * 100
         
-        # Pivot Points Calculation
+        # पिवट पॉइंट्स कैलकुलेशन
         pivot = (high_price + low_price + close_price) / 3
         r1 = (2 * pivot) - low_price
         s1 = (2 * pivot) - high_price
@@ -117,7 +122,7 @@ try:
         r3 = high_price + 2 * (pivot - low_price)
         s3 = low_price - 2 * (pivot - low_price)
         
-        # Display Metrics
+        # मेट्रिक्स दिखाना
         st.subheader(f"📊 {selected_symbol} - बाजार सारांश")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
@@ -127,7 +132,7 @@ try:
         
         st.write("---")
         
-        # Pivot Points Display
+        # सपोर्ट और रेजिस्टेंस
         st.markdown("### 🎯 सपोर्ट और रेजिस्टेंस लेवल्स (Pivot Points)")
         s_col, r_col = st.columns(2)
         
@@ -141,7 +146,7 @@ try:
             
         st.divider()
         
-        # Quick Technical Analysis Insights
+        # त्वरित तकनीकी विश्लेषण
         st.markdown("### 📝 त्वरित विश्लेषण बिंदु")
         reasons = []
         if close_price > pivot:
@@ -157,7 +162,7 @@ try:
         for r in reasons:
             st.write(r)
 
-        # ==================== फंडामेंटल डेटा और सटीक रेश्यो ====================
+        # फंडामेंटल डेटा
         st.divider()
         st.markdown("### 🏢 फंडामेंटल डेटा और वित्तीय रेश्यो (Fundamentals)")
         try:
@@ -179,9 +184,6 @@ try:
 
             roce = info.get('returnOnCapitalEmployed', None)
             roce_str = f"{roce * 100:.2f}%" if roce else "N/A"
-            
-            high_52 = info.get('fiftyTwoWeekHigh', 'N/A')
-            low_52 = info.get('fiftyTwoWeekLow', 'N/A')
 
             f1, f2, f3, f4 = st.columns(4)
             f1.metric("मार्केट कैप", market_cap_str)
@@ -198,7 +200,7 @@ try:
         except Exception as fund_err:
             st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
 
-        # ==================== मूल्य और वॉल्यूम चार्ट ====================
+        # चार्ट्स
         st.divider()
         st.markdown(f"### 📈 {selected_symbol} - मूल्य और वॉल्यूम चार्ट")
         
@@ -211,9 +213,10 @@ try:
         st.markdown("#### 📊 वॉल्यूम (Volume)")
         st.bar_chart(df['Volume'])
 
-        # ==================== कानूनी अस्वीकरण (SEBI Disclaimer) ====================
+        # डिस्क्लेमर
         st.markdown("---")
         st.info("🛡️ **अस्वीकरण (Disclaimer):** यह ऍप्लिकेशन केवल शैक्षिक और सूचना के उद्देश्य (Educational Purpose) के लिए है। यह किसी भी प्रकार की SEBI पंजीकृत निवेश सलाह या स्टॉक टिप नहीं प्रदान करता है।")
             
 except Exception as e:
     st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
+    
