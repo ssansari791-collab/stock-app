@@ -65,19 +65,54 @@ def get_news_and_sentiment(ticker):
     except:
         return "⚪ न्यूज़ उपलब्ध नहीं", []
 
-# --- 4. "आसमान छूने वाले" स्टॉक्स का लॉजिक (सेफ्टी चेक के साथ) ---
-def analyze_sky_rocket(symbol):
+# --- 4. RSI और MACD कैलकुलेट करने का फंक्शन (Weekly के लिए) ---
+def calculate_indicators(df):
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # MACD (12, 26, 9)
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = exp1 - exp2
+    df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    return df
+
+# --- 5. "साप्ताहिक (Weekly)" आसमान छूने वाले स्टॉक्स का लॉजिक ---
+def analyze_sky_rocket_weekly(symbol):
     try:
         ticker = yf.Ticker(symbol)
-        df = ticker.history(period="5y")
         
-        if df.empty or len(df) < 500: return None
+        # 🚨 सबसे बड़ा बदलाव: अब हम '1wk' (Weekly) डेटा मंगवा रहे हैं
+        df = ticker.history(period="5y", interval="1wk")
+        
+        if df.empty or len(df) < 100: return None
 
+        # इंडिकेटर्स कैलकुलेट करें
+        df = calculate_indicators(df)
+        
         current_price = df['Close'].iloc[-1]
+        current_rsi = df['RSI'].iloc[-1]
+        current_macd = df['MACD'].iloc[-1]
+        current_signal = df['MACD_Signal'].iloc[-1]
+        
         if current_price < 30: return None
 
+        # 🚨 RSI फिल्टर: RSI 50 से ऊपर होना चाहिए
+        if current_rsi < 50:
+            return None
+
+        # 🚨 MACD फिल्टर: MACD लाइन सिग्नल लाइन के ऊपर होनी चाहिए (तेजी का मोमेंटम)
+        if current_macd < current_signal:
+            return None
+
         # 2-3 साल का बड़ा रेजिस्टेंस (पुराना हाई) निकालें
-        past_data = df.iloc[:-500] 
+        # 5 साल में लगभग 250 हफ्ते होते हैं। हम आखिरी 50 हफ्ते (1 साल) छोड़कर बाकी डेटा से रेजिस्टेंस निकालेंगे
+        past_data = df.iloc[:-50] 
         if past_data.empty: return None
         resistance_level = past_data['High'].max()
 
@@ -85,53 +120,53 @@ def analyze_sky_rocket(symbol):
         if current_price <= resistance_level:
             return None 
 
-        # 🚨 शर्त 2 (सेफ्टी चेक): अगर स्टॉक रेजिस्टेंस से 20% से ज्यादा ऊपर उड़ चुका है, तो उसे छोड़ दें
-        # (यह Yahoo Finance के गलत डेटा को रोकने के लिए है, जैसे Paradeep का केस)
-        if current_price > (resistance_level * 1.20):
+        # शर्त 2 (सेफ्टी चेक): अगर स्टॉक रेजिस्टेंस से 25% से ज्यादा ऊपर उड़ चुका है, तो छोड़ दें
+        if current_price > (resistance_level * 1.25):
             return None
 
         # कैटेगरी तय करना
         status, color, details, category = "", "grey", "", ""
         is_green_candle = df['Close'].iloc[-1] > df['Open'].iloc[-1]
         
-        # 1. रीटेस्ट ज़ोन (लाइन के 5% के अंदर)
-        if resistance_level * 0.95 <= current_price <= resistance_level * 1.05:
+        # 1. रीटेस्ट ज़ोन (लाइन के 7% के अंदर)
+        if resistance_level * 0.93 <= current_price <= resistance_level * 1.07:
             if is_green_candle:
-                status = "✅ रीटेस्ट कन्फर्म (ग्रीन कैंडल)"
+                status = "✅ रीटेस्ट कन्फर्म (Weekly Green)"
                 color = "#00BFFF"
-                details = f"स्टॉक ने ₹{resistance_level:.2f} का रेजिस्टेंस तोड़ा और वापस उसी पर आकर हरी कैंडल बना रहा है। सबसे सेफ एंट्री।"
+                details = f"स्टॉक ने ₹{resistance_level:.2f} का रेजिस्टेंस तोड़ा और वापस उसी पर आकर हफ्ते की हरी कैंडल बना रहा है। सबसे सेफ एंट्री।"
             else:
                 status = "🎯 रीटेस्ट ज़ोन में"
                 color = "#FFA500"
                 details = f"स्टॉक ने ₹{resistance_level:.2f} का रेजिस्टेंस तोड़ा और अब उसी के पास है।"
             category = "Retest"
             
-        # 2. टारगेट हिट (लाइन से 5% से 20% ऊपर)
-        elif resistance_level * 1.05 < current_price <= resistance_level * 1.20:
-            status = "🔥 नया ब्रेकआउट (ऊपर निकला)"
+        # 2. टारगेट हिट (लाइन से 7% से 25% ऊपर)
+        elif resistance_level * 1.07 < current_price <= resistance_level * 1.25:
+            status = "🔥 नया ब्रेकआउट (Weekly)"
             color = "#00FF00"
             details = f"स्टॉक ने ₹{resistance_level:.2f} का बड़ा रेजिस्टेंस तोड़ लिया है और अब ऊपर की तरफ बढ़ रहा है।"
             category = "Fresh"
 
-        # वॉल्यूम चेक (बहुत कम वॉल्यूम वाले फेक स्टॉक्स हटा दें)
-        avg_volume = df['Volume'].iloc[-20:].mean()
+        # वॉल्यूम चेक (हफ्ते का औसत वॉल्यूम)
+        avg_volume = df['Volume'].iloc[-10:].mean()
         if df['Volume'].iloc[-1] < (avg_volume * 0.2):
             return None 
 
         news_sentiment, headlines = get_news_and_sentiment(ticker)
-        chart_df = df[-500:] 
+        chart_df = df[-150:] # चार्ट में 3 साल का हफ्ते वार डेटा दिखाएं
 
         return {
             "Stock": symbol.replace('.NS', ''), "Price": current_price, "Level": resistance_level,
             "Status": status, "Color": color, "Details": details, "News": news_sentiment,
-            "Headlines": headlines, "ChartData": chart_df, "Category": category
+            "Headlines": headlines, "ChartData": chart_df, "Category": category,
+            "RSI": round(current_rsi, 2)
         }
     except:
         return None
 
-# --- 5. मुख्य UI ---
-st.title("⚡ TickStox Pro - आसमान छूने वाले स्टॉक्स")
-st.info("🎯 यह स्कैनर सिर्फ उन स्टॉक्स को दिखाता है जिन्होंने 2-3 साल का बड़ा रेजिस्टेंस तोड़ दिया है और अब वो ऊपर की तरफ भाग रहे हैं।")
+# --- 6. मुख्य UI ---
+st.title("⚡ TickStox Pro - साप्ताहिक (Weekly) ब्रेकआउट स्कैनर")
+st.info("🎯 यह स्कैनर पूरे मार्केट को **हफ्ते (Weekly)** के हिसाब से स्कैन करता है। सिर्फ वही स्टॉक्स आएंगे जो 2-3 साल का रेजिस्टेंस तोड़ चुके हैं, जिनका **Weekly RSI 50+** है और **MACD तेजी** में है।")
 
 # फ़िल्टर ऑप्शन
 filter_option = st.radio(
@@ -154,7 +189,7 @@ if st.button("🚀 मेरे लिए बेस्ट स्टॉक्स 
         status_text = st.empty() 
         
         for i, stock in enumerate(scan_list):
-            res = analyze_sky_rocket(stock)
+            res = analyze_sky_rocket_weekly(stock)
             if res:
                 results.append(res)
             
@@ -191,6 +226,7 @@ if st.button("🚀 मेरे लिए बेस्ट स्टॉक्स 
                         with col1:
                             st.markdown(f"**कीमत:** ₹{r['Price']:.2f}")
                             st.markdown(f"**रेजिस्टेंस लेवल:** ₹{r['Level']:.2f}")
+                            st.markdown(f"**Weekly RSI:** {r['RSI']}")
                             st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
                             st.info(f"**विश्लेषण:** {r['Details']}")
                             
@@ -203,8 +239,9 @@ if st.button("🚀 मेरे लिए बेस्ट स्टॉक्स 
                             for h in r['Headlines'][:2]:
                                 st.write(f"- {h}")
                                 
-                        st.markdown("**📈 चार्ट (रेजिस्टेंस लाइन के साथ):**")
+                        st.markdown("**📈 साप्ताहिक (Weekly) चार्ट (रेजिस्टेंस लाइन के साथ):**")
                         
+                        # चार्ट बनाना (अब यह हफ्ते वाला चार्ट दिखाएगा)
                         fig = go.Figure(data=[go.Candlestick(
                             x=r['ChartData'].index,
                             open=r['ChartData']['Open'], high=r['ChartData']['High'],
