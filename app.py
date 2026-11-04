@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from io import StringIO
 
-# --- जुगाड़: अगर सर्वर पर लाइब्रेरी नहीं है, तो खुद इंस्टॉल करने की कोशिश करेगा ---
+# --- 1. पैकेज इंस्टॉल करने का जुगाड़ ---
 try:
     import plotly.graph_objects as go
     import yfinance as yf
@@ -16,9 +16,9 @@ except ImportError:
 
 st.set_page_config(page_title="TickStox Pro", layout="wide")
 
-# --- 1. पूरे मार्केट (NSE) की सभी स्टॉक्स की लिस्ट लोड करने का फंक्शन ---
-@st.cache_data(ttl=86400) # 24 घंटे तक लिस्ट कैश (याद) रखेगा
-def get_all_nse_symbols():
+# --- 2. पूरे मार्केट (NSE) की सभी स्टॉक्स की लिस्ट (बैंकिंग/फाइनेंस हटाकर) ---
+@st.cache_data(ttl=86400) 
+def get_halal_nse_symbols():
     try:
         url = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
@@ -26,14 +26,29 @@ def get_all_nse_symbols():
         
         if response.status_code == 200:
             df = pd.read_csv(StringIO(response.text))
-            symbols = [str(sym).strip() + '.NS' for sym in df['SYMBOL'].tolist()]
+            
+            # बैंकिंग, फाइनेंस और ब्याज आधारित सेक्टर्स को हटाने के लिए शब्दों की सूची
+            # इसमें बैंक, फाइनेंस, इंश्योरेंस, होम लोन, कैपिटल आदि शामिल हैं।
+            HARAM_KEYWORDS = [
+                'BANK', 'FIN', 'NBFC', 'CAPITAL', 'FINSERV', 'CHOLA', 'MUTHOOT', 
+                'BAJAJ', 'SHRIRAM', 'INVEST', 'INSURANCE', 'LIFE', 'GIC', 'LIC', 
+                'HOUSING', 'HOME', 'LOAN', 'CREDIT', 'MICRO', 'FINCORP', 'AMC', 
+                'ASSET', 'WEALTH', 'SECURITIES', 'BROKING', 'MUTUAL'
+            ]
+            
+            symbols = []
+            for sym in df['SYMBOL'].tolist():
+                sym_str = str(sym).strip().upper()
+                # अगर सिंबल में ब्याज/फाइनेंस से जुड़ा कोई भी शब्द नहीं है, तभी उसे लिस्ट में जोड़ें
+                if not any(kw in sym_str for kw in HARAM_KEYWORDS):
+                    symbols.append(sym_str + '.NS')
             return symbols
         else:
             return []
     except:
         return []
 
-# --- 2. न्यूज़ चेक करने का फंक्शन ---
+# --- 3. न्यूज़ चेक करने का फंक्शन ---
 def get_news_and_sentiment(ticker):
     NEGATIVE_KEYWORDS = ['loss', 'fraud', 'penalty', 'downgrade', 'resign', 'sebi', 'probe', 'fall', 'decline', 'debt', 'warning', 'slump']
     try:
@@ -55,7 +70,7 @@ def get_news_and_sentiment(ticker):
     except:
         return "⚪ न्यूज़ उपलब्ध नहीं", []
 
-# --- 3. स्कैनर का मुख्य लॉजिक ---
+# --- 4. स्कैनर का मुख्य लॉजिक ---
 def analyze_stock(symbol):
     try:
         ticker = yf.Ticker(symbol)
@@ -116,18 +131,18 @@ def analyze_stock(symbol):
     except:
         return None
 
-# --- 4. मुख्य UI ---
-st.title("⚡ TickStox Pro - पूरा मार्केट स्कैनर")
-st.warning("⚠️ ध्यान दें: यह स्कैनर NSE के सभी लिस्टेड स्टॉक्स को स्कैन करता है। इसमें 10-15 मिनट लग सकते हैं।")
+# --- 5. मुख्य UI ---
+st.title("⚡ TickStox Pro - पूरा मार्केट स्कैनर (शरिया कंप्लायंट)")
+st.warning("⚠️ ध्यान दें: यह स्कैनर NSE के सभी स्टॉक्स को स्कैन करता है, लेकिन **बैंकिंग, फाइनेंस और ब्याज आधारित सभी कंपनियों को अपने आप हटा देता है।** इसमें 10-15 मिनट लग सकते हैं।")
 
 if st.button("🚀 पूरे मार्केट को स्कैन करें", use_container_width=True):
     with st.spinner("NSE की पूरी लिस्ट लोड हो रही है..."):
-        scan_list = get_all_nse_symbols()
+        scan_list = get_halal_nse_symbols()
         
     if not scan_list:
         st.error("NSE की लिस्ट लोड नहीं हो पाई। कृपया दोबारा कोशिश करें।")
     else:
-        st.success(f"लिस्ट लोड हो गई! कुल {len(scan_list)} स्टॉक्स स्कैन किए जा रहे हैं...")
+        st.success(f"लिस्ट लोड हो गई! कुल {len(scan_list)} (हलाल) स्टॉक्स स्कैन किए जा रहे हैं...")
         
         results = []
         progress_bar = st.progress(0)
@@ -163,6 +178,9 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
                         st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
                         st.info(f"**विश्लेषण:** {r['Details']}")
                         
+                        # स्टॉक का नाम कॉपी करने के लिए टेक्स्ट बॉक्स
+                        st.text_input("📋 स्टॉक का नाम कॉपी करें:", value=r['Stock'], key=f"copy_{r['Stock']}")
+                        
                     with col2:
                         st.markdown("**📰 ताज़ा न्यूज़:**")
                         st.write(r['News'])
@@ -189,3 +207,6 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
                         plot_bgcolor='rgba(0,0,0,0)',
                     )
                     st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
+st.info("🛡️ **अस्वीकरण:** यह जानकारी सिर्फ शैक्षिक उद्देश्य के लिए है।")
