@@ -1,9 +1,18 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import requests
 from io import StringIO
-import plotly.graph_objects as go
+
+# --- जुगाड़: अगर सर्वर पर लाइब्रेरी नहीं है, तो खुद इंस्टॉल करने की कोशिश करेगा ---
+try:
+    import plotly.graph_objects as go
+    import yfinance as yf
+except ImportError:
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly", "yfinance"])
+    import plotly.graph_objects as go
+    import yfinance as yf
 
 st.set_page_config(page_title="TickStox Pro", layout="wide")
 
@@ -11,14 +20,12 @@ st.set_page_config(page_title="TickStox Pro", layout="wide")
 @st.cache_data(ttl=86400) # 24 घंटे तक लिस्ट कैश (याद) रखेगा
 def get_all_nse_symbols():
     try:
-        # NSE की सभी लिस्टेड कंपनियों की CSV फाइल का लिंक
         url = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         response = requests.get(url, headers=headers)
         
         if response.status_code == 200:
             df = pd.read_csv(StringIO(response.text))
-            # सिंबल के आगे .NS लगाना जरूरी है Yahoo Finance के लिए
             symbols = [str(sym).strip() + '.NS' for sym in df['SYMBOL'].tolist()]
             return symbols
         else:
@@ -57,12 +64,12 @@ def analyze_stock(symbol):
 
         current_price = df['Close'].iloc[-1]
         
-        # पेनी स्टॉक्स (₹20 से नीचे) को हटाने के लिए (आपकी शर्त)
+        # पेनी स्टॉक्स (₹20 से नीचे) को हटाने के लिए
         if current_price < 20: return None
 
         all_time_high = df['High'].max()
         
-        # शर्त: 5 साल के All-Time High के 15% के दायरे में (ताकि ज्यादा स्टॉक्स मिलें)
+        # शर्त: 5 साल के All-Time High के 15% के दायरे में
         if current_price < (all_time_high * 0.85): return None
 
         prev_high = df['High'].iloc[-2]
@@ -93,8 +100,6 @@ def analyze_stock(symbol):
             details = "स्टॉक अपने ऑल-टाइम हाई के पास है, लेकिन अभी किसी तरफ साफ मूवमेंट नहीं दिखा रहा है।"
 
         news_sentiment, headlines = get_news_and_sentiment(ticker)
-
-        # Candlestick चार्ट के लिए डेटा (आखिरी 1 साल)
         chart_df = df[-250:] 
 
         return {
@@ -113,7 +118,7 @@ def analyze_stock(symbol):
 
 # --- 4. मुख्य UI ---
 st.title("⚡ TickStox Pro - पूरा मार्केट स्कैनर")
-st.warning("⚠️ ध्यान दें: यह स्कैनर NSE के **सभी लिस्टेड स्टॉक्स (2000+)** को स्कैन करता है। इसमें 10-15 मिनट लग सकते हैं। कृपया बीच में स्कैन रोकें नहीं।")
+st.warning("⚠️ ध्यान दें: यह स्कैनर NSE के सभी लिस्टेड स्टॉक्स को स्कैन करता है। इसमें 10-15 मिनट लग सकते हैं।")
 
 if st.button("🚀 पूरे मार्केट को स्कैन करें", use_container_width=True):
     with st.spinner("NSE की पूरी लिस्ट लोड हो रही है..."):
@@ -126,14 +131,13 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
         
         results = []
         progress_bar = st.progress(0)
-        status_text = st.empty() # प्रोग्रेस टेक्स्ट दिखाने के लिए
+        status_text = st.empty() 
         
         for i, stock in enumerate(scan_list):
             res = analyze_stock(stock)
             if res:
                 results.append(res)
             
-            # हर 50 स्टॉक्स के बाद प्रोग्रेस अपडेट करें
             if i % 50 == 0 or i == len(scan_list) - 1:
                 progress = (i + 1) / len(scan_list)
                 progress_bar.progress(progress)
@@ -143,11 +147,10 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
         status_text.empty()
 
         if not results:
-            st.warning("आज आपकी शर्तों (All-Time High के पास) पर कोई स्टॉक नहीं मिला।")
+            st.warning("आज आपकी शर्तों पर कोई स्टॉक नहीं मिला।")
         else:
-            st.success(f"कुल {len(results)} स्टॉक्स मिले जो हाई के पास हैं। किसी भी स्टॉक पर क्लिक करके पूरी डिटेल देखें:")
+            st.success(f"कुल {len(results)} स्टॉक्स मिले जो हाई के पास हैं:")
             
-            # परिणामों को दिखाना
             for r in results:
                 expander_title = f"{r['Stock']} | ₹{r['Price']:.2f} | {r['Status']}"
                 
@@ -168,7 +171,6 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
                             
                     st.markdown("**📈 पिछले 1 साल का Candlestick चार्ट:**")
                     
-                    # Plotly का Candlestick चार्ट
                     fig = go.Figure(data=[go.Candlestick(
                         x=r['ChartData'].index,
                         open=r['ChartData']['Open'],
@@ -187,6 +189,3 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
                         plot_bgcolor='rgba(0,0,0,0)',
                     )
                     st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("---")
-st.info("🛡️ **अस्वीकरण:** यह जानकारी सिर्फ शैक्षिक उद्देश्य के लिए है।")
