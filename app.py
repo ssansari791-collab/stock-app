@@ -4,9 +4,7 @@ import pandas as pd
 
 st.set_page_config(page_title="TickStox Pro", layout="wide")
 
-# --- 1. बड़ा स्टॉक लिस्ट (Nifty 50 + Next 50 + Midcap 150 + Smallcap के मुख्य स्टॉक्स) ---
-# यह लगभग 600+ स्टॉक्स की लिस्ट है (पूरा मार्केट कवर करने के लिए)
-# आप चाहें तो इसमें अपने मनपसंद स्टॉक्स और जोड़ सकते हैं।
+# --- 1. स्टॉक लिस्ट (Nifty 50 + Midcap + Smallcap के प्रमुख स्टॉक्स) ---
 SCAN_LIST = [
     'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'BHARTIARTL.NS', 'SBIN.NS', 'INFY.NS', 'ITC.NS', 
     'HINDUNILVR.NS', 'LT.NS', 'BAJFINANCE.NS', 'HCLTECH.NS', 'KOTAKBANK.NS', 'AXISBANK.NS', 'MARUTI.NS', 
@@ -24,7 +22,6 @@ SCAN_LIST = [
     'ATGL.NS', 'AMBUJACEM.NS', 'DMART.NS', 'BANKINDIA.NS', 'CONCOR.NS', 'CUMMINSIND.NS', 'FEDERALBNK.NS', 
     'GMRINFRA.NS', 'IDEA.NS', 'INDIGO.NS', 'MAXHEALTH.NS', 'OBEROIRLTY.NS', 'PAYTM.NS', 'POLICYBZR.NS', 
     'SAIL.NS', 'TIINDIA.NS', 'TORNTPHARM.NS', 'SUNDARMFIN.NS', 'SUNTV.NS', 'NYKAA.NS', 'BHARATFORG.NS',
-    # Midcap और Smallcap के प्रमुख स्टॉक्स
     'ABCAPITAL.NS', 'ABFRL.NS', 'ACC.NS', 'AIAENG.NS', 'AJANTPHARM.NS', 'ALKEM.NS', 'APLAPOLLO.NS', 'ASTRAL.NS',
     'AUBANK.NS', 'AUROPHARMA.NS', 'BALKRISIND.NS', 'BANDHANBNK.NS', 'BATAINDIA.NS', 'BHARATRAS.NS', 'BIOCON.NS',
     'BSOFT.NS', 'CANFINHOME.NS', 'CDSL.NS', 'CGPOWER.NS', 'CROMPTON.NS', 'CUB.NS', 'CYIENT.NS', 'DALBHARAT.NS',
@@ -37,10 +34,11 @@ SCAN_LIST = [
     'PEL.NS', 'PERSISTENT.NS', 'PETRONET.NS', 'PPLPHARMA.NS', 'PRESTIGE.NS', 'RAMCOCEM.NS', 'RATNAMANI.NS',
     'SANOFI.NS', 'SCHAEFFLER.NS', 'SKFINDIA.NS', 'SONACOMS.NS', 'STARHEALTH.NS', 'SUNDRMFAST.NS',
     'SUPREMEIND.NS', 'SYNGENE.NS', 'TANLA.NS', 'TATAELXSI.NS', 'TATAMTRDVR.NS', 'TATACHEM.NS', 'THERMAX.NS',
-    'TRIDENT.NS', 'UCOBANK.NS', 'UJJIVANSFB.NS', 'VINATIORGA.NS', 'VOLTAS.NS', 'WHIRLPOOL.NS', 'ZEEL.NS'
+    'TRIDENT.NS', 'UCOBANK.NS', 'UJJIVANSFB.NS', 'VINATIORGA.NS', 'VOLTAS.NS', 'WHIRLPOOL.NS', 'ZEEL.NS',
+    'SMSLIFE.NS' # आपकी तस्वीर वाला स्टॉक (SMS Pharmaceuticals)
 ]
 
-# --- 2. न्यूज़ और सेंटीमेंट चेक करने का फंक्शन ---
+# --- 2. न्यूज़ चेक फंक्शन ---
 def get_news_and_sentiment(ticker):
     NEGATIVE_KEYWORDS = ['loss', 'fraud', 'penalty', 'downgrade', 'resign', 'sebi', 'probe', 'fall', 'decline', 'debt', 'warning', 'slump']
     try:
@@ -62,18 +60,20 @@ def get_news_and_sentiment(ticker):
     except:
         return "⚪ न्यूज़ उपलब्ध नहीं", []
 
-# --- 3. स्कैनर का मुख्य लॉजिक ---
+# --- 3. स्कैनर का मुख्य लॉजिक (ALL-TIME HIGH के लिए) ---
 def analyze_stock(symbol):
     try:
         ticker = yf.Ticker(symbol)
-        df = ticker.history(period="1y")
-        if df.empty or len(df) < 50: return None
+        # 5 साल का डेटा (ताकि All-Time High पकड़ में आए)
+        df = ticker.history(period="5y")
+        if df.empty or len(df) < 200: return None
 
         current_price = df['Close'].iloc[-1]
-        week_52_high = df['High'].max()
+        all_time_high = df['High'].max()
         
-        # शर्त: 52-वीक हाई के 10% के दायरे में वाले स्टॉक्स (ताकि ज्यादा स्टॉक्स मिलें)
-        if current_price < (week_52_high * 0.90): return None
+        # शर्त: स्टॉक अपने 5 साल के हाई (ATH) के 5% के दायरे में हो
+        # यानी वह हाई से ज्यादा से ज्यादा 5% नीचे हो सकता है, इससे ज्यादा नहीं।
+        if current_price < (all_time_high * 0.95): return None
 
         prev_high = df['High'].iloc[-2]
         avg_volume = df['Volume'].iloc[-20:].mean()
@@ -89,7 +89,7 @@ def analyze_stock(symbol):
             status = "🎯 रीटेस्ट ज़ोन में"
             color = "#FFA500"
             details = "स्टॉक ब्रेकआउट के बाद वापस अपने पुराने हाई (अब सपोर्ट) को टेस्ट कर रहा है। अगर यहाँ हरी कैंडल बने, तो एंट्री ली जा सकती है।"
-        elif df['Close'].iloc[-1] > df['Open'].iloc[-1] and df['Low'].iloc[-1] <= (week_52_high * 0.99):
+        elif df['Close'].iloc[-1] > df['Open'].iloc[-1] and df['Low'].iloc[-1] <= (all_time_high * 0.99):
             status = "✅ रीटेस्ट कन्फर्म"
             color = "#00BFFF"
             details = "स्टॉक ने सपोर्ट ले लिया है और हरी कैंडल बना दी है। यह एक कन्फर्म एंट्री सिग्नल है।"
@@ -100,14 +100,14 @@ def analyze_stock(symbol):
         else:
             status = "📊 हाई के पास (Consolidating)"
             color = "grey"
-            details = "स्टॉक अपने 52-वीक हाई के पास है, लेकिन अभी किसी तरफ साफ मूवमेंट नहीं दिखा रहा है।"
+            details = "स्टॉक अपने ऑल-टाइम हाई के पास है, लेकिन अभी किसी तरफ साफ मूवमेंट नहीं दिखा रहा है।"
 
         news_sentiment, headlines = get_news_and_sentiment(ticker)
 
         return {
             "Stock": symbol.replace('.NS', ''),
             "Price": current_price,
-            "52W High": week_52_high,
+            "52W High": all_time_high, # अब यह All Time High है
             "Status": status,
             "Color": color,
             "Details": details,
@@ -119,7 +119,9 @@ def analyze_stock(symbol):
         return None
 
 # --- 4. मुख्य UI ---
-st.title("⚡ TickStox Pro - स्मार्ट स्कैनर")
+st.title("⚡ TickStox Pro - ब्रेकआउट स्कैनर")
+
+st.info("🔍 यह स्कैनर सिर्फ उन स्टॉक्स को ढूंढता है जो अपने **All-Time High (5 साल के सबसे ऊपरी स्तर)** के 5% के दायरे में हैं। (जहाँ ऊपर कोई रेजिस्टेंस नहीं है)")
 
 if st.button("🚀 पूरे मार्केट को स्कैन करें", use_container_width=True):
     with st.spinner("डेटा स्कैन हो रहा है... इसमें 5-10 मिनट लग सकते हैं। कृपया प्रतीक्षा करें..."):
@@ -135,11 +137,10 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
         progress_bar.empty()
 
         if not results:
-            st.warning("आज आपकी शर्तों (52-वीक हाई के पास) पर कोई स्टॉक नहीं मिला।")
+            st.warning("आज आपकी शर्तों (All-Time High के पास) पर कोई स्टॉक नहीं मिला।")
         else:
             st.success(f"कुल {len(results)} स्टॉक्स मिले जो हाई के पास हैं। किसी भी स्टॉक पर क्लिक करके पूरी डिटेल देखें:")
             
-            # स्टॉक्स को लिस्ट में दिखाना (Expander का इस्तेमाल करके)
             for r in results:
                 expander_title = f"{r['Stock']} | ₹{r['Price']:.2f} | {r['Status']}"
                 
@@ -148,7 +149,7 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
                     
                     with col1:
                         st.markdown(f"**कीमत:** ₹{r['Price']:.2f}")
-                        st.markdown(f"**52-वीक हाई:** ₹{r['52W High']:.2f}")
+                        st.markdown(f"**All-Time High:** ₹{r['52W High']:.2f}")
                         st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
                         st.info(f"**विश्लेषण:** {r['Details']}")
                         
@@ -158,7 +159,7 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
                         for h in r['Headlines'][:3]:
                             st.write(f"- {h}")
                             
-                    st.markdown("**📈 पिछले 1 साल का चार्ट:**")
+                    st.markdown("**📈 पिछले 5 साल का चार्ट (All-Time High):**")
                     st.line_chart(r['ChartData'])
 
 st.markdown("---")
