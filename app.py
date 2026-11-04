@@ -5,218 +5,194 @@ import urllib.request
 import json
 import urllib.parse
 
-st.set_page_config(page_title="TickStox", layout="wide")
+st.set_page_config(page_title="TickStox Pro", layout="wide")
 
-# 1. सुरक्षित और ऑप्टिमाइज़्ड सर्च फंक्शन (Proxy/Header Safe)
+# --- 1. सुरक्षित सर्च फंक्शन ---
 def fetch_stock_suggestions(query):
     try:
         encoded_query = urllib.parse.quote(query)
-        # Yahoo Finance का स्टैंडर्ड सर्च एंडपॉइंट
         url = f"https://query1.finance.yahoo.com/v1/finance/search?q={encoded_query}&quotesCount=15&newsCount=0&enableFuzzyQuery=true"
-        
-        # प्रॉपर यूजर-एजेंट हेडर के साथ रिक्वेस्ट भेजना ताकि सर्वर ब्लॉक न करे
         req = urllib.request.Request(
             url, 
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         )
         with urllib.request.urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode())
             quotes = data.get('quotes', [])
-            
             stock_options = []
             for q in quotes:
                 symbol = q.get('symbol', '')
                 short_name = q.get('shortname', q.get('longname', symbol))
                 exchange = q.get('exchange', '')
-                
                 if symbol.endswith('.NS') or symbol.endswith('.BO') or exchange in ['NSI', 'BSE', 'NSE']:
-                    stock_options.append({
-                        'display': f"{short_name} ({symbol})",
-                        'symbol': symbol
-                    })
+                    stock_options.append({'display': f"{short_name} ({symbol})", 'symbol': symbol})
             return stock_options
-    except Exception as e:
+    except:
         return []
 
-st.markdown("### ⚡ TickStox - प्रोफेशनल स्टॉक एनालिटिक्स")
+# --- 2. ब्रेकआउट और रीटेस्ट स्कैनर का लॉजिक ---
+def check_breakout_stock(symbol):
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="1y")
+        if df.empty or len(df) < 50: return None
 
-# सर्च और प्रीसेट श्रेणियों के लिए अलग विकल्प (मोड)
+        current_price = df['Close'].iloc[-1]
+        week_52_high = df['High'].max()
+        
+        # शर्त 1: स्टॉक 52-वीक हाई के 5% के दायरे में हो (खुले आसमान के पास)
+        if current_price < (week_52_high * 0.95): return None
+
+        prev_high = df['High'].iloc[-2]
+        avg_volume = df['Volume'].iloc[-20:].mean()
+        current_volume = df['Volume'].iloc[-1]
+
+        # शर्त 2: स्टेटस चेक करना
+        status, color = "", "grey"
+        
+        if current_price > prev_high and current_volume > (avg_volume * 1.2):
+            status = "🔥 ताजा ब्रेकआउट (Volume Spike)"
+            color = "green"
+        elif prev_high < current_price <= (prev_high * 1.02):
+            status = "🎯 रीटेस्ट ज़ोन में (Near Old High)"
+            color = "orange"
+        elif df['Close'].iloc[-1] > df['Open'].iloc[-1] and df['Low'].iloc[-1] <= (week_52_high * 0.99):
+            status = "✅ रीटेस्ट कन्फर्म (Green Candle)"
+            color = "blue"
+        elif current_price < prev_high and current_price < df['Open'].iloc[-1]:
+            status = "❌ रीटेस्ट फेल / फेक ब्रेकआउट"
+            color = "red"
+        else:
+            status = "📊 हाई के पास (Consolidating)"
+            color = "grey"
+
+        # शर्त 3: बैड न्यूज़ चेक करना
+        NEGATIVE_KEYWORDS = ['loss', 'fraud', 'penalty', 'downgrade', 'resign', 'sebi', 'probe', 'fall', 'decline', 'debt']
+        news_list = ticker.news
+        news_status = "🟢 No Bad News"
+        
+        if news_list:
+            for news in news_list[:3]:
+                title = news.get('title', '').lower()
+                for keyword in NEGATIVE_KEYWORDS:
+                    if keyword in title:
+                        news_status = f"🔴 BAD NEWS: {news['title'][:30]}..."
+                        break
+
+        return {
+            "Stock": symbol.replace('.NS', ''),
+            "Price": f"₹{current_price:.2f}",
+            "52W High": f"₹{week_52_high:.2f}",
+            "Status": status,
+            "News": news_status,
+            "Color": color
+        }
+    except:
+        return None
+
+# --- 3. मुख्य UI ---
+st.markdown("### ⚡ TickStox Pro - प्रोफेशनल स्टॉक एनालिटिक्स")
+
 screener_mode = st.radio(
     "🔍 मोड चुनें:",
-    ["सामान्य लाइव सर्च (Manual Search)", "🔥 हाई P/E / मोमेंटम स्टॉक सूची", "🏛️ मजबूत फंडामेंटल स्टॉक सूची"],
+    ["🔥 स्मार्ट ब्रेकआउट स्कैनर (नया)", "सामान्य लाइव सर्च (Manual)", "🏛️ मजबूत फंडामेंटल स्टॉक"],
     horizontal=True
 )
 
-default_symbol = "RELIANCE.NS"
+# स्कैनर के लिए स्टॉक्स की लिस्ट
+SCAN_LIST = [
+    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'BHARTIARTL.NS',
+    'SBIN.NS', 'INFY.NS', 'ITC.NS', 'HINDUNILVR.NS', 'LT.NS',
+    'BAJFINANCE.NS', 'HCLTECH.NS', 'KOTAKBANK.NS', 'AXISBANK.NS', 'MARUTI.NS',
+    'SUNPHARMA.NS', 'TITAN.NS', 'ULTRACEMCO.NS', 'WIPRO.NS', 'ADANIENT.NS',
+    'TATAMOTORS.NS', 'M&M.NS', 'POWERGRID.NS', 'NTPC.NS', 'TATASTEEL.NS',
+    'ZOMATO.NS', 'MAZDOCK.NS', 'HAL.NS', 'BEL.NS', 'IRFC.NS', 'TRENT.NS'
+]
 
-if screener_mode == "🔥 हाई P/E / मोमेंटम स्टॉक सूची":
-    high_pe_list = ["TRENT.NS", "ZOMATO.NS", "DIXON.NS", "POLYCAB.NS", "HAL.NS", "BEL.NS", "RVNL.NS", "JWL.NS", "COCHINSHIP.NS"]
-    chosen_preset = st.selectbox("हाई P/E स्टॉक चुनें:", high_pe_list)
-    default_symbol = chosen_preset
-elif screener_mode == "🏛️ मजबूत फंडामेंटल स्टॉक सूची":
+if screener_mode == "🔥 स्मार्ट ब्रेकआउट स्कैनर (नया)":
+    st.info("यह स्कैनर सिर्फ उन स्टॉक्स को ढूंढता है जो अपने 52-वीक हाई के 5% के दायरे में हैं (जहाँ ऊपर कोई रेजिस्टेंस नहीं है)।")
+    
+    if st.button("🚀 स्कैन शुरू करें", use_container_width=True):
+        with st.spinner("डेटा स्कैन हो रहा है... इसमें 30-40 सेकंड लग सकते हैं..."):
+            results = []
+            for stock in SCAN_LIST:
+                res = check_breakout_stock(stock)
+                if res:
+                    results.append(res)
+            
+            if not results:
+                st.warning("आज आपकी शर्तों पर कोई स्टॉक नहीं मिला।")
+            else:
+                for r in results:
+                    card_color = r['Color']
+                    st.markdown(f"""
+                    <div style="border-left: 5px solid {card_color}; padding: 10px; border-radius: 5px; margin-bottom: 10px; background-color: #1e1e1e; color: white;">
+                        <h4 style="margin:0; color: {card_color};">{r['Stock']} | {r['Price']}</h4>
+                        <p style="margin:5px 0;">52W High: {r['52W High']} | Status: <b>{r['Status']}</b></p>
+                        <p style="margin:0; font-size: 14px;">{r['News']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+elif screener_mode == "🏛️ मजबूत फंडामेंटल स्टॉक":
     strong_fund_list = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS", "LT.NS", "ICICIBANK.NS", "SBIN.NS"]
     chosen_preset = st.selectbox("मजबूत फंडामेंटल स्टॉक चुनें:", strong_fund_list)
-    default_symbol = chosen_preset
-
-# 2. लाइव सर्च बॉक्स
-if screener_mode == "सामान्य लाइव सर्च (Manual Search)":
-    user_query = st.text_input("🔍 शेयर का नाम या कंपनी टाइप करें (उदा. Zomato, Tata, Reliance):", "RELIANCE")
+    selected_symbol = chosen_preset
+else:
+    # सामान्य सर्च
+    user_query = st.text_input("🔍 शेयर का नाम टाइप करें (उदा. Zomato, Tata):", "RELIANCE")
     selected_symbol = "RELIANCE.NS"
-    
     if user_query:
-        clean_query = user_query.strip()
-        with st.spinner("🔍 इंटरनेट से शेयर खोजे जा रहे हैं..."):
-            suggestions = fetch_stock_suggestions(clean_query)
-        
+        suggestions = fetch_stock_suggestions(user_query.strip())
         if suggestions:
             options_map = {item['display']: item['symbol'] for item in suggestions}
-            chosen_display = st.selectbox("👇 मिलते-जुलते शेयरों की सूची (सूची से चुनें):", list(options_map.keys()))
+            chosen_display = st.selectbox("👇 स्टॉक चुनें:", list(options_map.keys()))
             selected_symbol = options_map[chosen_display]
+
+# --- 4. सामान्य सर्च वाला पुराना डेटा (यह सिर्फ तब दिखेगा जब स्कैनर नहीं चुना हो) ---
+if screener_mode != "🔥 स्मार्ट ब्रेकआउट स्कैनर (नया)":
+    st.write("---")
+    try:
+        stock = yf.Ticker(selected_symbol)
+        df = stock.history(period="6mo")
+        
+        if df.empty:
+            st.error(f"❌ '{selected_symbol}' का डेटा नहीं मिला।")
         else:
-            upper_q = clean_query.upper().replace(" ", "")
-            if not upper_q.endswith(".NS") and not upper_q.endswith(".BO"):
-                selected_symbol = upper_q + ".NS"
-            else:
-                selected_symbol = upper_q
-else:
-    selected_symbol = default_symbol
-
-st.write("---")
-
-# लाइव मार्केट डेटा और पिवट पॉइंट्स फेच करना
-try:
-    stock = yf.Ticker(selected_symbol)
-    df = stock.history(period="6mo")
-    
-    if df.empty:
-        if selected_symbol.endswith(".NS"):
-            bse_symbol = selected_symbol.replace(".NS", ".BO")
-            stock = yf.Ticker(bse_symbol)
-            df = stock.history(period="6mo")
-            if not df.empty:
-                selected_symbol = bse_symbol
+            latest = df.iloc[-1]
+            prev_close = df.iloc[-2]['Close'] if len(df) > 1 else latest['Open']
+            
+            close_price = latest['Close']
+            high_price = latest['High']
+            low_price = latest['Low']
+            
+            change = close_price - prev_close
+            change_pct = (change / prev_close) * 100
+            
+            # पिवट पॉइंट्स
+            pivot = (high_price + low_price + close_price) / 3
+            r1 = (2 * pivot) - low_price
+            s1 = (2 * pivot) - high_price
+            
+            st.subheader(f"📊 {selected_symbol} - बाजार सारांश")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
+            m2.metric("आज का हाई", f"₹{high_price:.2f}")
+            m3.metric("आज का लो", f"₹{low_price:.2f}")
+            
+            st.markdown(f"**🎯 पिवट पॉइंट (Pivot): ₹{pivot:.2f}**")
+            s_col, r_col = st.columns(2)
+            with s_col:
+                st.write(f"🔵 सपोर्ट (S1): ₹{s1:.2f}")
+            with r_col:
+                st.write(f"🟢 रेजिस्टेंस (R1): ₹{r1:.2f}")
                 
-    if df.empty:
-        st.error(f"❌ '{selected_symbol}' का डेटा नहीं मिला। कृपया कंपनी का नाम सही से लिखें।")
-    else:
-        latest = df.iloc[-1]
-        prev_close = df.iloc[-2]['Close'] if len(df) > 1 else latest['Open']
-        
-        close_price = latest['Close']
-        high_price = latest['High']
-        low_price = latest['Low']
-        open_price = latest['Open']
-        volume = latest['Volume']
-        
-        change = close_price - prev_close
-        change_pct = (change / prev_close) * 100
-        
-        # पिवट पॉइंट्स कैलकुलेशन
-        pivot = (high_price + low_price + close_price) / 3
-        r1 = (2 * pivot) - low_price
-        s1 = (2 * pivot) - high_price
-        r2 = pivot + (high_price - low_price)
-        s2 = pivot - (high_price - low_price)
-        r3 = high_price + 2 * (pivot - low_price)
-        s3 = low_price - 2 * (pivot - low_price)
-        
-        # मेट्रिक्स दिखाना
-        st.subheader(f"📊 {selected_symbol} - बाजार सारांश")
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("लाइव भाव (Close)", f"₹{close_price:.2f}", f"{change_pct:+.2f}%")
-        m2.metric("आज का हाई (High)", f"₹{high_price:.2f}")
-        m3.metric("आज का लो (Low)", f"₹{low_price:.2f}")
-        m4.metric("वॉल्यूम (Volume)", f"{volume:,}")
-        
-        st.write("---")
-        
-        # सपोर्ट और रेजिस्टेंस
-        st.markdown("### 🎯 सपोर्ट और रेजिस्टेंस लेवल्स (Pivot Points)")
-        s_col, r_col = st.columns(2)
-        
-        with s_col:
-            st.markdown("#### 🔵 सपोर्ट लेवल्स")
-            st.write(f"**S1:** ₹{s1:.2f} | **S2:** ₹{s2:.2f} | **S3:** ₹{s3:.2f}")
+            st.markdown("#### 📈 चार्ट (Price & Volume)")
+            chart_df = pd.DataFrame(index=df.index)
+            chart_df['Close Price'] = df['Close']
+            st.line_chart(chart_df)
             
-        with r_col:
-            st.markdown("#### 🟢 रेजिस्टेंस लेवल्स")
-            st.write(f"**R1:** ₹{r1:.2f} | **R2:** ₹{r2:.2f} | **R3:** ₹{r3:.2f}")
-            
-        st.divider()
-        
-        # त्वरित तकनीकी विश्लेषण
-        st.markdown("### 📝 त्वरित विश्लेषण बिंदु")
-        reasons = []
-        if close_price > pivot:
-            reasons.append(f"✅ शेयर का भाव आज के पिवट पॉइंट (₹{pivot:.2f}) से ऊपर ट्रेड कर रहा है, जो तेजी का संकेत हो सकता है।")
-        else:
-            reasons.append(f"⚠️ शेयर का भाव पिवट पॉइंट (₹{pivot:.2f}) से नीचे है, जो कमजोरी दिखा सकता है।")
-            
-        if close_price > prev_close:
-            reasons.append("📈 पिछला दिन हरे निशान में बंद हुआ था।")
-        else:
-            reasons.append("📉 पिछले दिन की तुलना में गिरावट दर्ज की गई है।")
-            
-        for r in reasons:
-            st.write(r)
+    except Exception as e:
+        st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
 
-        # फंडामेंटल डेटा
-        st.divider()
-        st.markdown("### 🏢 फंडामेंटल डेटा और वित्तीय रेश्यो (Fundamentals)")
-        try:
-            info = stock.info
-            
-            market_cap = info.get('marketCap', 'N/A')
-            market_cap_str = f"₹{market_cap / 10000000:,.2f} Cr" if market_cap != 'N/A' else "उपलब्ध नहीं"
-
-            pe_ratio = info.get('trailingPE', 'N/A')
-            ind_pe = info.get('industryPE', 'N/A')
-            pb_ratio = info.get('priceToBook', 'N/A')
-            eps = info.get('trailingEps', 'N/A')
-            
-            div_yield = info.get('dividendYield', None)
-            div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/A"
-            
-            roe = info.get('returnOnEquity', None)
-            roe_str = f"{roe * 100:.2f}%" if roe else "N/A"
-
-            roce = info.get('returnOnCapitalEmployed', None)
-            roce_str = f"{roce * 100:.2f}%" if roce else "N/A"
-
-            f1, f2, f3, f4 = st.columns(4)
-            f1.metric("मार्केट कैप", market_cap_str)
-            f2.metric("स्टॉक P/E", f"{pe_ratio:.2f}" if isinstance(pe_ratio, (int, float)) else pe_ratio)
-            f3.metric("इंडस्ट्री P/E", f"{ind_pe:.2f}" if isinstance(ind_pe, (int, float)) else "उपलब्ध नहीं")
-            f4.metric("P/B रेश्यो", f"{pb_ratio:.2f}" if isinstance(pb_ratio, (int, float)) else pb_ratio)
-
-            f5, f6, f7, f8 = st.columns(4)
-            f5.metric("ROE", roe_str)
-            f6.metric("ROCE", roce_str)
-            f7.metric("EPS (TTM)", f"₹{eps:.2f}" if isinstance(eps, (int, float)) else eps)
-            f8.metric("डिविडेंड यील्ड", div_yield_str)
-
-        except Exception as fund_err:
-            st.info("फंडामेंटल डेटा लोड करने में असमर्थ।")
-
-        # चार्ट्स
-        st.divider()
-        st.markdown(f"### 📈 {selected_symbol} - मूल्य और वॉल्यूम चार्ट")
-        
-        chart_df = pd.DataFrame(index=df.index)
-        chart_df['Close Price'] = df['Close']
-        chart_df['SMA 20'] = df['Close'].rolling(window=20).mean()
-        
-        st.line_chart(chart_df)
-        
-        st.markdown("#### 📊 वॉल्यूम (Volume)")
-        st.bar_chart(df['Volume'])
-
-        # डिस्क्लेमर
-        st.markdown("---")
-        st.info("🛡️ **अस्वीकरण (Disclaimer):** यह ऍप्लिकेशन केवल शैक्षिक और सूचना के उद्देश्य (Educational Purpose) के लिए है। यह किसी भी प्रकार की SEBI पंजीकृत निवेश सलाह या स्टॉक टिप नहीं प्रदान करता है।")
-            
-except Exception as e:
-    st.error(f"डेटा प्रोसेस करने में त्रुटि: {e}")
-    
+st.markdown("---")
+st.info("🛡️ **अस्वीकरण:** यह ऐप सिर्फ शैक्षिक उद्देश्य के लिए है।")
