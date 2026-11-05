@@ -110,7 +110,6 @@ def analyze_weekly_stock(symbol):
         is_green_candle = df['Close'].iloc[-1] > df['Open'].iloc[-1]
         
         # --- रियल टारगेट कैलकुलेशन ---
-        # टारगेट तय करने का फॉर्मूला (रेजिस्टेंस के आधार पर)
         t1 = resistance_level * 1.15 # 15% ऊपर
         t2 = resistance_level * 1.30 # 30% ऊपर
         t3 = resistance_level * 1.50 # 50% ऊपर
@@ -132,7 +131,7 @@ def analyze_weekly_stock(symbol):
             else:
                 status = "🚀 पहला टारगेट पार (T1)"
             color = "#FF1493"
-            category = "Sky High"
+            category = "Targets"
             
         # 3. रीटेस्ट ज़ोन (लाइन के 5% के अंदर)
         elif resistance_level * 0.95 <= current_price < t1:
@@ -154,18 +153,19 @@ def analyze_weekly_stock(symbol):
             "Status": status, "Color": color, "News": news_sentiment,
             "Headlines": headlines, "ChartData": chart_df, "Category": category,
             "RSI": round(current_rsi, 2), "EMA_Val": current_ema,
-            "T1": t1, "T2": t2, "T3": t3 # टारगेट की वैल्यू भी साथ भेजें
+            "T1": t1, "T2": t2, "T3": t3
         }
     except:
         return None
 
 # --- 6. मुख्य UI ---
 st.title("⚡ TickStox Pro - रियल टारगेट रडार")
-st.info("🎯 यह रडार सिर्फ उन स्टॉक्स को दिखाता है जिन्होंने 2 साल का रेजिस्टेंस तोड़ा है और अब वो अपने असली टारगेट (T1, T2, T3) की तरफ बढ़ रहे हैं।")
+st.info("🎯 यह रडार सिर्फ उन स्टॉक्स को दिखाता है जिन्होंने 2 साल का रेजिस्टेंस तोड़ा है।")
 
+# सिर्फ 3 मुख्य टैब
 filter_option = st.radio(
-    "आपको कौन से स्टॉक्स देखने हैं?",
-    ["सभी स्टॉक्स (All)", "✅ रीटेस्ट कन्फर्म", "🚀 पहला टारगेट (T1)", "🚀 दूसरा टारगेट (T2)", "🚀 तीसरा टारगेट (T3)", "❌ ब्रेकडाउन (Failed)"],
+    "मुख्य मेनू चुनें:",
+    ["✅ रीटेस्ट (Retest)", "🚀 ऊपर उड़ान (Targets)", "❌ ब्रेकडाउन (Breakdown)"],
     horizontal=True
 )
 
@@ -199,22 +199,23 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
             st.warning("आज आपकी शर्तों पर कोई स्टॉक नहीं मिला।")
         else:
             # फ़िल्टर लगाना
-            if filter_option == "✅ रीटेस्ट कन्फर्म":
+            if filter_option == "✅ रीटेस्ट (Retest)":
                 results = [r for r in results if r['Category'] == 'Retest']
-            elif filter_option == "🚀 पहला टारगेट (T1)":
-                results = [r for r in results if "T1" in r['Status']]
-            elif filter_option == "🚀 दूसरा टारगेट (T2)":
-                results = [r for r in results if "T2" in r['Status']]
-            elif filter_option == "🚀 तीसरा टारगेट (T3)":
-                results = [r for r in results if "T3" in r['Status']]
-            elif filter_option == "❌ ब्रेकडाउन (Failed)":
+            elif filter_option == "🚀 ऊपर उड़ान (Targets)":
+                results = [r for r in results if r['Category'] == 'Targets']
+            elif filter_option == "❌ ब्रेकडाउन (Breakdown)":
                 results = [r for r in results if r['Category'] == 'Breakdown']
 
             if not results:
-                st.warning("इस फ़िल्टर में कोई स्टॉक नहीं मिला।")
+                st.warning("इस टैब में कोई स्टॉक नहीं मिला।")
             else:
-                # लिस्ट को स्टेटस के हिसाब से सजाएं (रीटेस्ट सबसे ऊपर)
-                results = sorted(results, key=lambda x: 0 if "✅" in x['Status'] else (1 if "🚀" in x['Status'] else 2))
+                # कन्फर्म वाले स्टॉक्स सबसे ऊपर (अगर रीटेस्ट है तो)
+                if filter_option == "✅ रीटेस्ट (Retest)":
+                    results = sorted(results, key=lambda x: 0 if "✅" in x['Status'] else 1)
+                # टारगेट वालों में T1 सबसे ऊपर, फिर T2, फिर T3
+                elif filter_option == "🚀 ऊपर उड़ान (Targets)":
+                    results = sorted(results, key=lambda x: 0 if "T1" in x['Status'] else (1 if "T2" in x['Status'] else 2))
+                
                 st.success(f"कुल {len(results)} स्टॉक्स मिले:")
                 
                 for r in results:
@@ -229,7 +230,7 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
                             st.markdown(f"**Weekly RSI:** {r['RSI']}")
                             st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
                             
-                            # असली टारगेट दिखाएं
+                            # टारगेट लेवल्स
                             st.markdown("**🎯 टारगेट लेवल्स:**")
                             st.markdown(f"**T1:** ₹{r['T1']:.2f} | **T2:** ₹{r['T2']:.2f} | **T3:** ₹{r['T3']:.2f}")
                             
@@ -257,7 +258,6 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
                             line=dict(color='yellow', width=2), name='EMA 20'
                         ))
                         
-                        # चार्ट पर सभी टारगेट लाइनें खींचें
                         fig.add_hline(y=r['Level'], line_dash="dash", line_color="blue", annotation_text="पुराना रेजिस्टेंस")
                         fig.add_hline(y=r['T1'], line_dash="dot", line_color="orange", annotation_text="Target 1")
                         fig.add_hline(y=r['T2'], line_dash="dot", line_color="purple", annotation_text="Target 2")
