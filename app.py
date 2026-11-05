@@ -77,7 +77,7 @@ def calculate_indicators(df):
     df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
     return df
 
-# --- 5. स्टॉक एनालिसिस (रियल टारगेट कैलकुलेशन के साथ) ---
+# --- 5. स्टॉक एनालिसिस (मोमेंटम और ब्रेकआउट के साथ) ---
 def analyze_weekly_stock(symbol):
     try:
         ticker = yf.Ticker(symbol)
@@ -122,8 +122,26 @@ def analyze_weekly_stock(symbol):
             color = "#FF0000"
             category = "Breakdown"
             
-        # 2. ऊपर उड़ान (रियल टारगेट्स)
-        elif current_price >= t1:
+        # 2. रीटेस्ट और मोमेंटम (5% से 20% तक ऊपर)
+        elif resistance_level * 0.95 <= current_price <= resistance_level * 1.20:
+            if current_price <= resistance_level * 1.05:
+                if is_green_candle and current_rsi > 50 and current_macd > current_signal:
+                    status = "✅ रीटेस्ट कन्फर्म (सेफ एंट्री)"
+                    color = "#00BFFF"
+                else:
+                    status = "🎯 रीटेस्ट ज़ोन में"
+                    color = "#FFA500"
+            else:
+                # 5% से 20% के बीच (मजबूत मोमेंटम)
+                if current_rsi > 55: # मोमेंटम के लिए RSI थोड़ा ऊपर चाहिए
+                    status = "🔥 मजबूत मोमेंटम (ऊपर निकला)"
+                    color = "#00FF00"
+                else:
+                    return None # अगर RSI कमजोर है तो छोड़ दें
+            category = "Retest"
+            
+        # 3. ऊपर उड़ान (20% से ज्यादा ऊपर - Sky High)
+        elif current_price > resistance_level * 1.20:
             if current_price >= t3:
                 status = "🚀 तीसरा टारगेट पार (T3)"
             elif current_price >= t2:
@@ -132,18 +150,11 @@ def analyze_weekly_stock(symbol):
                 status = "🚀 पहला टारगेट पार (T1)"
             color = "#FF1493"
             category = "Targets"
-            
-        # 3. रीटेस्ट ज़ोन (लाइन के 5% के अंदर)
-        elif resistance_level * 0.95 <= current_price < t1:
-            if is_green_candle and current_rsi > 50 and current_macd > current_signal:
-                status = "✅ रीटेस्ट कन्फर्म (सेफ एंट्री)"
-                color = "#00BFFF"
-            else:
-                status = "🎯 रीटेस्ट ज़ोन में"
-                color = "#FFA500"
-            category = "Retest"
 
         if category == "": return None
+
+        # ब्रेकआउट टैब के लिए स्पेशल (सिर्फ वो जो लाइन के ऊपर हैं)
+        is_pure_breakout = (current_price > resistance_level) and (current_rsi > 50) and (current_macd > current_signal)
 
         news_sentiment, headlines = get_news_and_sentiment(ticker)
         chart_df = df[-150:] 
@@ -153,7 +164,7 @@ def analyze_weekly_stock(symbol):
             "Status": status, "Color": color, "News": news_sentiment,
             "Headlines": headlines, "ChartData": chart_df, "Category": category,
             "RSI": round(current_rsi, 2), "EMA_Val": current_ema,
-            "T1": t1, "T2": t2, "T3": t3
+            "T1": t1, "T2": t2, "T3": t3, "Is_Pure_Breakout": is_pure_breakout
         }
     except:
         return None
@@ -162,10 +173,10 @@ def analyze_weekly_stock(symbol):
 st.title("⚡ TickStox Pro - रियल टारगेट रडार")
 st.info("🎯 यह रडार सिर्फ उन स्टॉक्स को दिखाता है जिन्होंने 2 साल का रेजिस्टेंस तोड़ा है।")
 
-# सिर्फ 3 मुख्य टैब
+# 4 मुख्य टैब
 filter_option = st.radio(
     "मुख्य मेनू चुनें:",
-    ["✅ रीटेस्ट (Retest)", "🚀 ऊपर उड़ान (Targets)", "❌ ब्रेकडाउन (Breakdown)"],
+    ["✅ रीटेस्ट / मोमेंटम", "🔥 सिर्फ ब्रेकआउट", "🚀 ऊपर उड़ान (Targets)", "❌ ब्रेकडाउन (Breakdown)"],
     horizontal=True
 )
 
@@ -199,8 +210,10 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
             st.warning("आज आपकी शर्तों पर कोई स्टॉक नहीं मिला।")
         else:
             # फ़िल्टर लगाना
-            if filter_option == "✅ रीटेस्ट (Retest)":
+            if filter_option == "✅ रीटेस्ट / मोमेंटम":
                 results = [r for r in results if r['Category'] == 'Retest']
+            elif filter_option == "🔥 सिर्फ ब्रेकआउट":
+                results = [r for r in results if r['Is_Pure_Breakout'] == True]
             elif filter_option == "🚀 ऊपर उड़ान (Targets)":
                 results = [r for r in results if r['Category'] == 'Targets']
             elif filter_option == "❌ ब्रेकडाउन (Breakdown)":
@@ -209,10 +222,12 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
             if not results:
                 st.warning("इस टैब में कोई स्टॉक नहीं मिला।")
             else:
-                # कन्फर्म वाले स्टॉक्स सबसे ऊपर (अगर रीटेस्ट है तो)
-                if filter_option == "✅ रीटेस्ट (Retest)":
+                # सॉर्टिंग (कन्फर्म और मोमेंटम सबसे ऊपर)
+                if filter_option == "✅ रीटेस्ट / मोमेंटम":
                     results = sorted(results, key=lambda x: 0 if "✅" in x['Status'] else 1)
-                # टारगेट वालों में T1 सबसे ऊपर, फिर T2, फिर T3
+                elif filter_option == "🔥 सिर्फ ब्रेकआउट":
+                    # जो सबसे ज्यादा ऊपर हैं वो ऊपर
+                    results = sorted(results, key=lambda x: x['Price'], reverse=True)
                 elif filter_option == "🚀 ऊपर उड़ान (Targets)":
                     results = sorted(results, key=lambda x: 0 if "T1" in x['Status'] else (1 if "T2" in x['Status'] else 2))
                 
@@ -230,7 +245,6 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
                             st.markdown(f"**Weekly RSI:** {r['RSI']}")
                             st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
                             
-                            # टारगेट लेवल्स
                             st.markdown("**🎯 टारगेट लेवल्स:**")
                             st.markdown(f"**T1:** ₹{r['T1']:.2f} | **T2:** ₹{r['T2']:.2f} | **T3:** ₹{r['T3']:.2f}")
                             
