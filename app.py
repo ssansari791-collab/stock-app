@@ -62,22 +62,41 @@ def get_news_and_sentiment(ticker):
     except:
         return "⚪ न्यूज़ उपलब्ध नहीं", []
 
-# --- 4. इंडिकेटर्स (RSI, MACD, EMA) ---
+# --- 4. इंडिकेटर्स (RSI, MACD, EMA, और नया MFI) ---
 def calculate_indicators(df):
+    # RSI
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     df['RSI'] = 100 - (100 / (1 + rs))
     
+    # MACD
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     df['MACD'] = exp1 - exp2
     df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    # EMA 20
     df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
+    
+    # 🚨 Money Flow Index (MFI) - स्मार्ट मनी का सबसे बड़ा इंडिकेटर
+    typical_price = (df['High'] + df['Low'] + df['Close']) / 3
+    money_flow = typical_price * df['Volume']
+    
+    positive_flow = money_flow.where(typical_price > typical_price.shift(1), 0)
+    negative_flow = money_flow.where(typical_price < typical_price.shift(1), 0)
+    
+    positive_flow_sum = positive_flow.rolling(window=14).sum()
+    negative_flow_sum = negative_flow.rolling(window=14).sum()
+    
+    money_ratio = positive_flow_sum / negative_flow_sum
+    df['MFI'] = 100 - (100 / (1 + money_ratio))
+    df['MFI'] = df['MFI'].fillna(50) # अगर डेटा न हो तो न्यूट्रल (50) मान लो
+    
     return df
 
-# --- 5. स्टॉक एनालिसिस (मोमेंटम और ब्रेकआउट के साथ) ---
+# --- 5. स्टॉक एनालिसिस (मनी फ्लो के साथ) ---
 def analyze_weekly_stock(symbol):
     try:
         ticker = yf.Ticker(symbol)
@@ -92,37 +111,35 @@ def analyze_weekly_stock(symbol):
         current_macd = df['MACD'].iloc[-1]
         current_signal = df['MACD_Signal'].iloc[-1]
         current_ema = df['EMA_20'].iloc[-1]
+        current_mfi = df['MFI'].iloc[-1] # नया
         
         if current_price < 30: return None
 
-        # 2 साल का रेजिस्टेंस (पुराना हाई)
+        # 2 साल का रेजिस्टेंस
         past_data = df.iloc[:-50] 
         if past_data.empty: return None
         resistance_level = past_data['High'].max()
 
-        # क्या स्टॉक पहले रेजिस्टेंस तोड़ चुका है?
         was_above_resistance = df['High'].iloc[-50:].max() > resistance_level
 
-        # वॉल्यूम चेक
+        # वॉल्यूम चेक (थोड़ा ढीला किया ताकि मनी फ्लो वाले स्टॉक्स मिस न हों)
         avg_volume = df['Volume'].iloc[-10:].mean()
-        if df['Volume'].iloc[-1] < (avg_volume * 0.2): return None 
+        if df['Volume'].iloc[-1] < (avg_volume * 0.1): return None 
 
         is_green_candle = df['Close'].iloc[-1] > df['Open'].iloc[-1]
         
-        # --- रियल टारगेट कैलकुलेशन ---
-        t1 = resistance_level * 1.15 # 15% ऊपर
-        t2 = resistance_level * 1.30 # 30% ऊपर
-        t3 = resistance_level * 1.50 # 50% ऊपर
+        t1 = resistance_level * 1.15 
+        t2 = resistance_level * 1.30 
+        t3 = resistance_level * 1.50 
 
         status, color, category = "", "grey", ""
         
-        # 1. ब्रेकडाउन (पहले ऊपर गया था, अब वापस लाइन के नीचे)
+        # --- पुराना लॉजिक (बिल्कुल वैसा ही) ---
         if was_above_resistance and current_price < resistance_level:
             status = "❌ ब्रेकडाउन (रीटेस्ट फेल)"
             color = "#FF0000"
             category = "Breakdown"
             
-        # 2. रीटेस्ट और मोमेंटम (5% से 20% तक ऊपर)
         elif resistance_level * 0.95 <= current_price <= resistance_level * 1.20:
             if current_price <= resistance_level * 1.05:
                 if is_green_candle and current_rsi > 50 and current_macd > current_signal:
@@ -132,15 +149,14 @@ def analyze_weekly_stock(symbol):
                     status = "🎯 रीटेस्ट ज़ोन में"
                     color = "#FFA500"
             else:
-                # 5% से 20% के बीच (मजबूत मोमेंटम)
-                if current_rsi > 55: # मोमेंटम के लिए RSI थोड़ा ऊपर चाहिए
+                if current_rsi > 55: 
                     status = "🔥 मजबूत मोमेंटम (ऊपर निकला)"
                     color = "#00FF00"
                 else:
-                    return None # अगर RSI कमजोर है तो छोड़ दें
-            category = "Retest"
+                    category = "" # रीटेस्ट में नहीं है, नीचे मनी फ्लो चेक करेंगे
+            if category != "":
+                category = "Retest"
             
-        # 3. ऊपर उड़ान (20% से ज्यादा ऊपर - Sky High)
         elif current_price > resistance_level * 1.20:
             if current_price >= t3:
                 status = "🚀 तीसरा टारगेट पार (T3)"
@@ -151,9 +167,19 @@ def analyze_weekly_stock(symbol):
             color = "#FF1493"
             category = "Targets"
 
-        if category == "": return None
+        # 🚨 अगर स्टॉक किसी ब्रेकआउट कैटेगरी में नहीं है, लेकिन मनी फ्लो स्ट्रॉन्ग है
+        if category == "":
+            if current_mfi >= 60:
+                status = "🟢 सिर्फ पैसा आ रहा है (Strong Inflow)"
+                color = "#00FF00"
+                category = "InflowOnly"
+            elif current_mfi <= 40:
+                status = "🔴 पैसा निकल रहा है (Strong Outflow)"
+                color = "#FF0000"
+                category = "OutflowOnly"
+            else:
+                return None # ना ब्रेकआउट, ना मनी फ्लो तो छोड़ दो
 
-        # ब्रेकआउट टैब के लिए स्पेशल (सिर्फ वो जो लाइन के ऊपर हैं)
         is_pure_breakout = (current_price > resistance_level) and (current_rsi > 50) and (current_macd > current_signal)
 
         news_sentiment, headlines = get_news_and_sentiment(ticker)
@@ -163,7 +189,7 @@ def analyze_weekly_stock(symbol):
             "Stock": symbol.replace('.NS', ''), "Price": current_price, "Level": resistance_level,
             "Status": status, "Color": color, "News": news_sentiment,
             "Headlines": headlines, "ChartData": chart_df, "Category": category,
-            "RSI": round(current_rsi, 2), "EMA_Val": current_ema,
+            "RSI": round(current_rsi, 2), "EMA_Val": current_ema, "MFI": round(current_mfi, 2),
             "T1": t1, "T2": t2, "T3": t3, "Is_Pure_Breakout": is_pure_breakout
         }
     except:
@@ -171,12 +197,12 @@ def analyze_weekly_stock(symbol):
 
 # --- 6. मुख्य UI ---
 st.title("⚡ TickStox Pro - रियल टारगेट रडार")
-st.info("🎯 यह रडार सिर्फ उन स्टॉक्स को दिखाता है जिन्होंने 2 साल का रेजिस्टेंस तोड़ा है।")
+st.info("🎯 यह रडार 2 साल का रेजिस्टेंस तोड़ने वाले स्टॉक्स के साथ-साथ अब **स्मार्ट मनी (Money Flow)** को भी ट्रैक करता है।")
 
-# 4 मुख्य टैब
+# 6 मुख्य टैब
 filter_option = st.radio(
     "मुख्य मेनू चुनें:",
-    ["✅ रीटेस्ट / मोमेंटम", "🔥 सिर्फ ब्रेकआउट", "🚀 ऊपर उड़ान (Targets)", "❌ ब्रेकडाउन (Breakdown)"],
+    ["✅ रीटेस्ट / मोमेंटम", "🔥 सिर्फ ब्रेकआउट", "🚀 ऊपर उड़ान (Targets)", "❌ ब्रेकडाउन (Breakdown)", "🟢 पैसा आ रहा है (Inflow)", "🔴 पैसा निकल रहा है (Outflow)"],
     horizontal=True
 )
 
@@ -212,25 +238,29 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
             # फ़िल्टर लगाना
             if filter_option == "✅ रीटेस्ट / मोमेंटम":
                 results = [r for r in results if r['Category'] == 'Retest']
+                results = sorted(results, key=lambda x: 0 if "✅" in x['Status'] else 1)
             elif filter_option == "🔥 सिर्फ ब्रेकआउट":
                 results = [r for r in results if r['Is_Pure_Breakout'] == True]
+                results = sorted(results, key=lambda x: x['Price'], reverse=True)
             elif filter_option == "🚀 ऊपर उड़ान (Targets)":
                 results = [r for r in results if r['Category'] == 'Targets']
+                results = sorted(results, key=lambda x: 0 if "T1" in x['Status'] else (1 if "T2" in x['Status'] else 2))
             elif filter_option == "❌ ब्रेकडाउन (Breakdown)":
                 results = [r for r in results if r['Category'] == 'Breakdown']
+            
+            # 🚨 नया लॉजिक: मनी फ्लो
+            elif filter_option == "🟢 पैसा आ रहा है (Inflow)":
+                results = [r for r in results if r['MFI'] >= 60]
+                # जिसमें सबसे ज्यादा पैसा आ रहा है (MFI ज्यादा है) वो सबसे ऊपर
+                results = sorted(results, key=lambda x: x['MFI'], reverse=True) 
+            elif filter_option == "🔴 पैसा निकल रहा है (Outflow)":
+                results = [r for r in results if r['MFI'] <= 40]
+                # जिसमें सबसे ज्यादा पैसा निकल रहा है (MFI कम है) वो सबसे ऊपर
+                results = sorted(results, key=lambda x: x['MFI'], reverse=False) 
 
             if not results:
                 st.warning("इस टैब में कोई स्टॉक नहीं मिला।")
             else:
-                # सॉर्टिंग (कन्फर्म और मोमेंटम सबसे ऊपर)
-                if filter_option == "✅ रीटेस्ट / मोमेंटम":
-                    results = sorted(results, key=lambda x: 0 if "✅" in x['Status'] else 1)
-                elif filter_option == "🔥 सिर्फ ब्रेकआउट":
-                    # जो सबसे ज्यादा ऊपर हैं वो ऊपर
-                    results = sorted(results, key=lambda x: x['Price'], reverse=True)
-                elif filter_option == "🚀 ऊपर उड़ान (Targets)":
-                    results = sorted(results, key=lambda x: 0 if "T1" in x['Status'] else (1 if "T2" in x['Status'] else 2))
-                
                 st.success(f"कुल {len(results)} स्टॉक्स मिले:")
                 
                 for r in results:
@@ -243,6 +273,11 @@ if st.button("🚀 स्कैन शुरू करें", use_container_wid
                             st.markdown(f"**कीमत:** ₹{r['Price']:.2f}")
                             st.markdown(f"**रेजिस्टेंस (सपोर्ट):** ₹{r['Level']:.2f}")
                             st.markdown(f"**Weekly RSI:** {r['RSI']}")
+                            
+                            # मनी फ्लो (MFI) का स्कोर
+                            mfi_color = "green" if r['MFI'] >= 60 else ("red" if r['MFI'] <= 40 else "orange")
+                            st.markdown(f"**Weekly MFI (Money Flow):** <span style='color:{mfi_color}; font-weight:bold;'>{r['MFI']}</span>", unsafe_allow_html=True)
+                            
                             st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
                             
                             st.markdown("**🎯 टारगेट लेवल्स:**")
