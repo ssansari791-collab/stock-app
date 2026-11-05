@@ -6,47 +6,17 @@ from io import StringIO
 # --- 1. पैकेज इंस्टॉल करने का जुगाड़ ---
 try:
     import plotly.graph_objects as go
-    import plotly.express as px
     import yfinance as yf
 except ImportError:
     import subprocess
     import sys
     subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly", "yfinance"])
     import plotly.graph_objects as go
-    import plotly.express as px
     import yfinance as yf
 
 st.set_page_config(page_title="TickStox Pro", layout="wide")
 
-# --- 2. कस्टम CSS (डिब्बों को सुंदर बनाने के लिए) ---
-st.markdown("""
-<style>
-    .inflow-box {
-        background-color: rgba(0, 255, 0, 0.1);
-        border: 2px solid #00FF00;
-        border-radius: 10px;
-        padding: 20px;
-        text-align: center;
-        color: #00FF00;
-        font-size: 24px;
-        font-weight: bold;
-        box-shadow: 0 0 10px #00FF00;
-    }
-    .outflow-box {
-        background-color: rgba(255, 0, 0, 0.1);
-        border: 2px solid #FF0000;
-        border-radius: 10px;
-        padding: 20px;
-        text-align: center;
-        color: #FF0000;
-        font-size: 24px;
-        font-weight: bold;
-        box-shadow: 0 0 10px #FF0000;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- 3. पूरे मार्केट (NSE) की लिस्ट (बैंकिंग हटाकर) ---
+# --- 2. पूरे मार्केट (NSE) की लिस्ट (बैंकिंग हटाकर) ---
 @st.cache_data(ttl=86400) 
 def get_halal_nse_symbols():
     try:
@@ -71,7 +41,7 @@ def get_halal_nse_symbols():
     except:
         return []
 
-# --- 4. इंडिकेटर्स (RSI, MACD, EMA, MFI) ---
+# --- 3. इंडिकेटर्स (RSI, MACD, EMA, MFI) ---
 def calculate_indicators(df):
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
@@ -99,7 +69,7 @@ def calculate_indicators(df):
     
     return df
 
-# --- 5. स्टॉक एनालिसिस ---
+# --- 4. स्टॉक एनालिसिस ---
 def analyze_weekly_stock(symbol):
     try:
         ticker = yf.Ticker(symbol)
@@ -130,71 +100,42 @@ def analyze_weekly_stock(symbol):
         t2 = resistance_level * 1.30 
         t3 = resistance_level * 1.50 
 
-        status, color, category = "", "grey", ""
-        
-        # पुराना लॉजिक
+        # स्टेटस चेक
+        is_breakdown = False
+        is_target = False
+        is_retest = False
+        is_pure_breakout = False
+
         if was_above_resistance and current_price < resistance_level:
-            status = "❌ ब्रेकडाउन"
-            color = "#FF0000"
-            category = "Breakdown"
+            is_breakdown = True
         elif resistance_level * 0.95 <= current_price <= resistance_level * 1.20:
             if current_price <= resistance_level * 1.05:
                 if is_green_candle and current_rsi > 50 and current_macd > current_signal:
-                    status = "✅ रीटेस्ट कन्फर्म"
-                    color = "#00BFFF"
-                else:
-                    status = "🎯 रीटेस्ट ज़ोन"
-                    color = "#FFA500"
+                    is_retest = True
             else:
                 if current_rsi > 55: 
-                    status = "🔥 मजबूत मोमेंटम"
-                    color = "#00FF00"
-                else:
-                    category = "" 
-            if category != "":
-                category = "Retest"
+                    is_retest = True # मजबूत मोमेंटम
         elif current_price > resistance_level * 1.20:
-            if current_price >= t3: status = "🚀 तीसरा टारगेट (T3)"
-            elif current_price >= t2: status = "🚀 दूसरा टारगेट (T2)"
-            else: status = "🚀 पहला टारगेट (T1)"
-            color = "#FF1493"
-            category = "Targets"
-
-        # मनी फ्लो लॉजिक
-        if category == "":
-            if current_mfi >= 60:
-                status = "🟢 पैसा आ रहा है"
-                color = "#00FF00"
-                category = "InflowOnly"
-            elif current_mfi <= 40:
-                status = "🔴 पैसा निकल रहा है"
-                color = "#FF0000"
-                category = "OutflowOnly"
-            else:
-                return None 
-
-        is_pure_breakout = (current_price > resistance_level) and (current_rsi > 50) and (current_macd > current_signal)
-
-        # न्यूज़ (स्कैन फास्ट करने के लिए इसे हल्का रखा है)
-        news_status = "🟢 कोई बुरी खबर नहीं"
-        headlines = []
+            is_target = True
         
+        if (current_price > resistance_level) and (current_rsi > 50) and (current_macd > current_signal):
+            is_pure_breakout = True
+
         return {
             "Stock": symbol.replace('.NS', ''), "Price": current_price, "Level": resistance_level,
-            "Status": status, "Color": color, "News": news_status,
-            "Headlines": headlines, "ChartData": df[-150:], "Category": category,
-            "RSI": round(current_rsi, 2), "EMA_Val": current_ema, "MFI": round(current_mfi, 2),
-            "Flow_Value_Cr": round(last_week_flow, 2),
-            "T1": t1, "T2": t2, "T3": t3, "Is_Pure_Breakout": is_pure_breakout
+            "ChartData": df[-150:], "RSI": round(current_rsi, 2), "EMA_Val": current_ema, 
+            "MFI": round(current_mfi, 2), "Flow_Value_Cr": round(last_week_flow, 2),
+            "T1": t1, "T2": t2, "T3": t3,
+            "Is_Breakdown": is_breakdown, "Is_Target": is_target, 
+            "Is_Retest": is_retest, "Is_Pure_Breakout": is_pure_breakout
         }
     except:
         return None
 
-# --- 6. मुख्य UI ---
+# --- 5. मुख्य UI ---
 st.title("⚡ TickStox Pro - प्रो डैशबोर्ड")
 
-# स्कैन बटन (डेटा को सेव करने के लिए Session State)
-if st.button("🚀 पूरे मार्केट को स्कैन करें (5-10 मिनट)", use_container_width=True):
+if st.button("🚀 पूरे मार्केट को स्कैन करें (5-10 मिनट)", use_container_width=True, type="primary"):
     with st.spinner("डेटा स्कैन हो रहा है... कृपया प्रतीक्षा करें..."):
         scan_list = get_halal_nse_symbols()
         results = []
@@ -213,88 +154,90 @@ if st.button("🚀 पूरे मार्केट को स्कैन क
 if 'scan_results' in st.session_state:
     results = st.session_state['scan_results']
     
-    # 1. पुराने 4 टैब (रेडियो बटन)
-    st.markdown("### 🔍 ब्रेकआउट और टारगेट स्कैनर")
-    filter_option = st.radio(
-        "टैब चुनें:",
-        ["✅ रीटेस्ट / मोमेंटम", "🔥 सिर्फ ब्रेकआउट", "🚀 ऊपर उड़ान (Targets)", "❌ ब्रेकडाउन (Breakdown)"],
-        horizontal=True
-    )
+    # 6 शानदार टैब
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "✅ रीटेस्ट / मोमेंटम", 
+        "🔥 सिर्फ ब्रेकआउट", 
+        "🚀 ऊपर उड़ान (Targets)", 
+        "❌ ब्रेकडाउन (Breakdown)",
+        "🟢 पैसा आ रहा है (Inflow)",
+        "🔴 पैसा निकल रहा है (Outflow)"
+    ])
 
-    st.markdown("---")
-    
-    # 2. नया मनी फ्लो डैशबोर्ड (बड़े डिब्बे)
-    st.markdown("### 💰 मनी फ्लो रडार (स्मार्ट मनी)")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<div class="inflow-box">🟢 पैसा आ रहा है (Inflow)</div>', unsafe_allow_html=True)
-        btn_inflow = st.button("यहाँ क्लिक करें (Inflow)", use_container_width=True, type="primary")
-    with col2:
-        st.markdown('<div class="outflow-box">🔴 पैसा निकल रहा है (Outflow)</div>', unsafe_allow_html=True)
-        btn_outflow = st.button("यहाँ क्लिक करें (Outflow)", use_container_width=True, type="secondary")
+    # --- टैब 1: रीटेस्ट ---
+    with tab1:
+        data = sorted([r for r in results if r['Is_Retest']], key=lambda x: x['Price'], reverse=True)
+        if not data: st.info("इस टैब में कोई स्टॉक नहीं मिला।")
+        for r in data:
+            st.markdown(f"**{r['Stock']}** | ₹{r['Price']:.2f} | MFI: {r['MFI']} | RSI: {r['RSI']} | Target 1: ₹{r['T1']:.2f}")
 
-    st.markdown("---")
+    # --- टैब 2: ब्रेकआउट ---
+    with tab2:
+        data = sorted([r for r in results if r['Is_Pure_Breakout']], key=lambda x: x['Price'], reverse=True)
+        if not data: st.info("इस टैब में कोई स्टॉक नहीं मिला।")
+        for r in data:
+            st.markdown(f"**{r['Stock']}** | ₹{r['Price']:.2f} | MFI: {r['MFI']} | RSI: {r['RSI']}")
 
-    # 3. डेटा दिखाने का लॉजिक
-    display_data = []
-    show_dashboard = False
-    
-    if btn_inflow:
-        display_data = [r for r in results if r['MFI'] >= 60]
-        display_data = sorted(display_data, key=lambda x: x['Flow_Value_Cr'], reverse=True)
-        show_dashboard = True
-        main_color = "#00FF00"
-        title_text = "🟢 टॉप इनफ्लो स्टॉक्स"
-    elif btn_outflow:
-        display_data = [r for r in results if r['MFI'] <= 40]
-        display_data = sorted(display_data, key=lambda x: x['Flow_Value_Cr'], reverse=True)
-        show_dashboard = True
-        main_color = "#FF0000"
-        title_text = "🔴 टॉप आउटफ्लो स्टॉक्स"
-    else:
-        # अगर रेडियो बटन वाले टैब पर क्लिक किया है
-        if filter_option == "✅ रीटेस्ट / मोमेंटम":
-            display_data = sorted([r for r in results if r['Category'] == 'Retest'], key=lambda x: 0 if "✅" in x['Status'] else 1)
-        elif filter_option == "🔥 सिर्फ ब्रेकआउट":
-            display_data = sorted([r for r in results if r['Is_Pure_Breakout'] == True], key=lambda x: x['Price'], reverse=True)
-        elif filter_option == "🚀 ऊपर उड़ान (Targets)":
-            display_data = sorted([r for r in results if r['Category'] == 'Targets'], key=lambda x: 0 if "T1" in x['Status'] else 1)
-        elif filter_option == "❌ ब्रेकडाउन (Breakdown)":
-            display_data = [r for r in results if r['Category'] == 'Breakdown']
+    # --- टैब 3: टारगेट ---
+    with tab3:
+        data = sorted([r for r in results if r['Is_Target']], key=lambda x: x['Price'], reverse=True)
+        if not data: st.info("इस टैब में कोई स्टॉक नहीं मिला।")
+        for r in data:
+            st.markdown(f"**{r['Stock']}** | ₹{r['Price']:.2f} | T1: ₹{r['T1']:.2f} | T2: ₹{r['T2']:.2f}")
 
-    if not display_data:
-        st.warning("इस सेक्शन में कोई स्टॉक नहीं मिला।")
-    else:
-        # अगर मनी फ्लो बटन दबाया है, तो ग्राफ दिखाएं
-        if show_dashboard:
-            total_flow_cr = sum([r['Flow_Value_Cr'] for r in display_data])
-            st.metric(label="कुल फंड मूवमेंट (पिछला हफ्ता)", value=f"₹{total_flow_cr:,.2f} Cr")
+    # --- टैब 4: ब्रेकडाउन ---
+    with tab4:
+        data = sorted([r for r in results if r['Is_Breakdown']], key=lambda x: x['Price'], reverse=True)
+        if not data: st.info("इस टैब में कोई स्टॉक नहीं मिला।")
+        for r in data:
+            st.markdown(f"**{r['Stock']}** | ₹{r['Price']:.2f} | MFI: {r['MFI']} | RSI: {r['RSI']}")
+
+    # --- टैब 5: इनफ्लो (पैसा आ रहा है) ---
+    with tab5:
+        data = sorted([r for r in results if r['MFI'] >= 60], key=lambda x: x['Flow_Value_Cr'], reverse=True)
+        if not data: 
+            st.info("इस टैब में कोई स्टॉक नहीं मिला।")
+        else:
+            total_cr = sum([r['Flow_Value_Cr'] for r in data])
+            st.metric("कुल इनफ्लो (पिछला हफ्ता)", f"₹{total_cr:,.2f} Cr")
             
-            top_stocks = display_data[:10]
+            # टॉप 10 का ग्राफ
+            top_10 = data[:10]
             fig = go.Figure(go.Bar(
-                x=[r['Flow_Value_Cr'] for r in top_stocks],
-                y=[r['Stock'] for r in top_stocks],
+                x=[r['Flow_Value_Cr'] for r in top_10],
+                y=[r['Stock'] for r in top_10],
                 orientation='h',
-                marker_color=main_color,
-                text=[f"₹{val:.1f} Cr" for val in [r['Flow_Value_Cr'] for r in top_stocks]],
+                marker_color='#00FF00',
+                text=[f"₹{r['Flow_Value_Cr']:.1f} Cr" for r in top_10],
                 textposition='auto',
             ))
-            fig.update_layout(height=400, yaxis=dict(autorange="reversed"), title=title_text)
+            fig.update_layout(height=400, yaxis=dict(autorange="reversed"), title="टॉप 10 इनफ्लो स्टॉक्स")
             st.plotly_chart(fig, use_container_width=True)
             
-        # स्टॉक्स की लिस्ट
-        for r in display_data:
-            with st.expander(f"{r['Stock']} | ₹{r['Price']:.2f} | {r['Status']}"):
-                col1, col2 = st.columns([1, 2])
-                with col1:
-                    st.markdown(f"**कीमत:** ₹{r['Price']:.2f}")
-                    st.markdown(f"**MFI:** {r['MFI']} | **RSI:** {r['RSI']}")
-                    st.markdown(f"**स्टेटस:** <span style='color:{r['Color']}; font-weight:bold;'>{r['Status']}</span>", unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"**टारगेट:** T1: ₹{r['T1']:.2f} | T2: ₹{r['T2']:.2f}")
-                
-                fig = go.Figure(data=[go.Candlestick(x=r['ChartData'].index, open=r['ChartData']['Open'], high=r['ChartData']['High'], low=r['ChartData']['Low'], close=r['ChartData']['Close'], increasing_line_color='green', decreasing_line_color='red')])
-                fig.add_hline(y=r['Level'], line_dash="dash", line_color="blue", annotation_text="रेजिस्टेंस")
-                fig.update_layout(xaxis_rangeslider_visible=False, height=400)
-                st.plotly_chart(fig, use_container_width=True)
-        
+            for r in data:
+                st.markdown(f"**{r['Stock']}** | ₹{r['Price']:.2f} | **कुल कारोबार: ₹{r['Flow_Value_Cr']:.2f} Cr** | MFI: {r['MFI']}")
+
+    # --- टैब 6: आउटफ्लो (पैसा निकल रहा है) ---
+    with tab6:
+        data = sorted([r for r in results if r['MFI'] <= 40], key=lambda x: x['Flow_Value_Cr'], reverse=True)
+        if not data: 
+            st.info("इस टैब में कोई स्टॉक नहीं मिला।")
+        else:
+            total_cr = sum([r['Flow_Value_Cr'] for r in data])
+            st.metric("कुल आउटफ्लो (पिछला हफ्ता)", f"₹{total_cr:,.2f} Cr")
+            
+            # टॉप 10 का ग्राफ
+            top_10 = data[:10]
+            fig = go.Figure(go.Bar(
+                x=[r['Flow_Value_Cr'] for r in top_10],
+                y=[r['Stock'] for r in top_10],
+                orientation='h',
+                marker_color='#FF0000',
+                text=[f"₹{r['Flow_Value_Cr']:.1f} Cr" for r in top_10],
+                textposition='auto',
+            ))
+            fig.update_layout(height=400, yaxis=dict(autorange="reversed"), title="टॉप 10 आउटफ्लो स्टॉक्स")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            for r in data:
+                st.markdown(f"**{r['Stock']}** | ₹{r['Price']:.2f} | **कुल कारोबार: ₹{r['Flow_Value_Cr']:.2f} Cr** | MFI: {r['MFI']}")
